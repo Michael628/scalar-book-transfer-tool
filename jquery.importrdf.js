@@ -87,38 +87,7 @@
 			return value;
 		},		
 		import : function(options, callback) {
-			switch(options.form) {
-				case 'urlform':
-					$.fn.rdfimporter('import_by_url', options, function(rdf) {
-						opts.source_rdf = rdf;
-						$.fn.rdfimporter('source', {source:JSON.stringify(rdf, null, 1)});
-						callback();
-					});
-					break;
-				case 'rdfform':
-					$.fn.rdfimporter('import_by_rdf', options);
-					break;
-				default:
-					alert('Could not determine the type of form');
-			}
-		},
-		import_by_url : function(options, callback) {
-			var source_url = opts.source_url.replace(/\/$/, "");
-			$.fn.rdfimporter('rdf', {source_url:source_url}, function(rdf) {
-				callback(rdf);
-			});
-		},
-		import_by_rdf : function(options) {
-			var rdf = opts.fields.rdfForm.rdf.val();
-			options = {dest_id:opts.fields.rdfForm.dest_id.val(),dest_url:opts.fields.rdfForm.dest_url.val()};
-			$.fn.rdfimporter('confirm_book', options, function(dest_urn) {
-				options.dest_urn = dest_urn;
-				$.fn.rdfimporter('browse', options, rdf);
-			});
-		},
-		save : function(options, callback) {
-			$.fn.rdfimporter('action', {action:'Results of each ajax action here ...'});
-			callback();
+
 		}
 	};
 
