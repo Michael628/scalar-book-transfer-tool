@@ -20,7 +20,16 @@ $(document).ready(function() {
 			commit.active = 0;
 		});
 		$modal.find('button[type="submit"]').click(function() {
-			alert('Nothing yet ...');
+			$dest_id = $commitform.find('#dest_id').val()
+			$dest_urn = $commitform.find('#dest_urn').val();
+			$dest_url = $commitform.find('#dest_url').val().replace(/\/$/, "");
+			// initialize importer
+			$.fn.rdfimporter({rdf:$commitform.data('rdf'),dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url});
+			$.fn.rdfimporter('import', function() {
+				alert('Done!');
+				$modal.modal('hide');
+				commit.active = 0;
+			});
 		});
 		if ($commitform.data('rdf')) {
 			$source_rdf.val(JSON.stringify($commitform.data('rdf'), null, 1));
