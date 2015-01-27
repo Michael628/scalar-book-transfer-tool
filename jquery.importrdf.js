@@ -27,7 +27,6 @@
 (function($) {
 
 	var defaults = {
-			dest_url: '',
 			relations: {
 			  'tag':{},
 			  'path':{},
@@ -42,11 +41,22 @@
 
 	var rdfimporter_methods = {
 			
-		init : function(options) {
+		init : function(options, callback) {
 			opts = $.extend( {}, defaults, options );
 			return this.each(function() {
 				var $this = $(this);
 				opts['$this'] = $this;
+		        $.fn.rdfimporter('queue', function() {
+		        	$progress = $this.find('#progress'); 
+		        	$progress_text = $progress.find('span');
+		        	$.fn.rdfimporter('pages', function(pagination, error_msg) {
+		        		var progress = ((pagination.count/pagination.total)*100)+'%';
+		        		$progress.css('width', progress);
+		        		$progress_text.text(pagination.count + ' of '+pagination.total);
+		        		if (pagination.error) $.fn.rdfimporter('error', {msg:error_msg});
+		        		if (pagination.count==pagination.total) callback();
+		        	});
+		        });
 			});	 
 		},
 		book_rdf : function(options, callback) {
@@ -58,6 +68,8 @@
 					return;
 				}
 				callback(rdf[uri]);
+			}).fail(function() {
+			    callback();
 			});
 		},		
 		rdf : function(options, callback) {
@@ -83,16 +95,8 @@
 				callback();
 			}
 		},	
-		rdf_value : function(options) {
-			var rdf = options.rdf;
-			var p = options.p;
-			if('undefined' == typeof(rdf[p]) || !rdf[p]) return null;
-			var value = rdf[p][0].value;
-			return value;
-		},
-		// currently doesn't use the options parameter.  All required data has been stored in the opts variable using init()
-		import : function(options, callback) {
-			var queue = opts.queue;
+		queue : function(options, callback) {
+			if ('function'==typeof(options)) callback = options;
 			$.each(opts.rdf, function(key,value) {
 	            // gather all book relations using old version numbers
 				var res = key.match(/urn:scalar:([a-zA-Z]*?):([0-9]+?):([0-9]+)/);
@@ -108,26 +112,26 @@
 					var entry_type = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'});
 					if(entry_type !== null) {
 						if(entry_type.match(/Media|Composite/) !== null) {
-							if(queue[key] === undefined) {
-								queue[key] = {};
+							if(opts.queue[key] === undefined) {
+								opts.queue[key] = {};
 							}
-							queue[key].action = 'ADD';
-							queue[key].native = 'true';
-							queue[key]['scalar:urn'] = '';
-							queue[key].id = opts.dest_id;
-							queue[key].api_key = '';
-							queue[key]['scalar:child_urn'] = opts.dest_urn;
-							queue[key]['scalar:child_type'] = 'http://scalar.usc.edu/2012/01/scalar-ns#Book';
-							queue[key]['scalar:child_rel'] = 'page';
-							queue[key]['urn:scalar:book'] = opts.dest_urn;
-							queue[key]['rdf:type'] = entry_type;
+							opts.queue[key].action = 'ADD';
+							opts.queue[key].native = 'true';
+							opts.queue[key]['scalar:urn'] = '';
+							opts.queue[key].id = opts.dest_id;
+							opts.queue[key].api_key = '';
+							opts.queue[key]['scalar:child_urn'] = opts.dest_urn;
+							opts.queue[key]['scalar:child_type'] = 'http://scalar.usc.edu/2012/01/scalar-ns#Book';
+							opts.queue[key]['scalar:child_rel'] = 'page';
+							opts.queue[key]['urn:scalar:book'] = opts.dest_urn;
+							opts.queue[key]['rdf:type'] = entry_type;
 
 						} else if(entry_type.match(/Version/) !== null) {
-				            // Use page url as key to the queue
+				            // Use page url as key to the opts.queue
 				            var k = key.match(/^(.*)\.[0-9]*$/)[1];
 
-				            if(queue[k] === undefined) {
-				            	queue[k] = {};
+				            if(opts.queue[k] === undefined) {
+				            	opts.queue[k] = {};
 				            }
 				            var old_version_number = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'}).match(/[0-9]*$/)[0];
                             // save old version number to create new relations
@@ -138,41 +142,46 @@
 				            }
             
           		            // Incomplete, must handle additional metadata
-          		            queue[k]['dcterms:title'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://purl.org/dc/terms/title'});
-          		            queue[k]['dcterms:description'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://purl.org/dc/terms/description'});
-          		            queue[k]['scalar:url'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'});
-          		            queue[k]['sioc:content'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://rdfs.org/sioc/ns#content'});
+          		            opts.queue[k]['dcterms:title'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://purl.org/dc/terms/title'});
+          		            opts.queue[k]['dcterms:description'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://purl.org/dc/terms/description'});
+          		            opts.queue[k]['scalar:url'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'});
+          		            opts.queue[k]['sioc:content'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://rdfs.org/sioc/ns#content'});
 				        }
 				    }
 				}
-			});
-	        $.fn.rdfimporter('import_pages',function() {
-	        	$.fn.rdfimporter('import_relations',callback);
-	        });
+			});		
+			callback();
 		},
-		import_pages: function(callback) {
+		pages : function(options, callback) {
+			if ('function'==typeof(options)) callback = options;
 			var page_count = 0;
 			var page_total = 0;
 			$.each(opts.queue,function(key,value) {
 				page_total++;
 				var url = opts.dest_url+'/api/add';
 				$.post(url, value, function( page_data ) {
-					page_count++;
+					if ('object'!=typeof(page_data)) return;
 					$.each(page_data, function(k,v) {
+						// TODO
 						var new_version_urn = $.fn.rdfimporter('rdf_value',{rdf:v,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
                         // build relationships where old version number is key to new version urn
 						opts.urn_map[opts.urn_map[key].old] = new_version_urn;
 					});
-          
-                    // once all post requests are processed, execute callback
-					if(page_count == page_total) {
-						callback();
+				}).always(function(err) {
+					console.log(err);
+					page_count++;
+					var msg = '';
+					if ('object'!=typeof(err)) {
+						var msg = 'URL isn\'t a Scalar Save API URL ['+url+'] for "'+value['dcterms:title']+'"';
+					} else if ('error'==err.statusText) {
+						var msg = 'There was an error resolving the Save API URL ['+url+'] for "'+value['dcterms:title']+'"';
 					}
+					callback({dest_url:dest_url,url:url,count:page_count,total:page_total,error:((msg.length)?true:false)}, msg);
 				});
 				opts.queue = {};
 			});
 		},
-		import_relations: function(callback) {
+		relations : function(callback) {
 			var relate_count = 0;
 			var relate_total = 0;
 			var url = opts.dest_url+'/api/relate';
@@ -200,7 +209,21 @@
 			});
 			opts.urn_map = {}
 			opts.relations = {};
-		}
+		},
+		error : function(options) {
+			$progress = opts['$this'].find('#progress'); 
+			$progress_log = $progress.closest('.row').find('#progress_log');
+			$progress.addClass('progress-bar-danger');
+			if ($progress_log.is(':hidden')) $progress_log.fadeIn();
+			$progress_log.append(options.msg+"<br />");
+		},
+		rdf_value : function(options) {
+			var rdf = options.rdf;
+			var p = options.p;
+			if('undefined' == typeof(rdf[p]) || !rdf[p]) return null;
+			var value = rdf[p][0].value;
+			return value;
+		},		
 	};
 
 	$.fn.rdfimporter = function(methodOrOptions) {		

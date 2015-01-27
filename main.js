@@ -7,7 +7,6 @@ $(document).ready(function() {
 		if ('undefined'==typeof(commit.active)) commit.active = 0;
 		commit.active++;
 		if (commit.active<2) return;
-		console.log('commit.active: '+commit.active);
 		$commitform = $('#commitform');
 		$source_rdf = $commitform.find('#source_rdf');
 		$source_rdf.val('Loading ...');
@@ -23,11 +22,16 @@ $(document).ready(function() {
 			$dest_id = $commitform.find('#dest_id').val()
 			$dest_urn = $commitform.find('#dest_urn').val();
 			$dest_url = $commitform.find('#dest_url').val().replace(/\/$/, "");
-			// initialize importer
-			$.fn.rdfimporter({rdf:$commitform.data('rdf'),dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url});
-			$.fn.rdfimporter('import', function() {
-				alert('Done!');
-				$modal.modal('hide');
+			$modal.rdfimporter({rdf:$commitform.data('rdf'),dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url}, function() {
+				var $this = $modal.find('button[type="submit"]');
+				$this.button('finished');
+				$this.unbind('click');
+				$this.click(function() {
+					$this.unbind('click');
+					$this.button('reset');
+					$modal.find('#progress').css('width', '0%');
+					$modal.modal('hide');
+				});
 				commit.active = 0;
 			});
 		});

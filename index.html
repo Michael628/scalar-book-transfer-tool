@@ -7,7 +7,6 @@
 <script src="bootstrap/js/bootstrap.min.js"></script>
 <script src="jquery.importrdf.js" ></script>
 <script src="main.js" ></script>
-<!--<script src="book_import.js" ></script>-->
 </head>
 <body>
 
@@ -27,7 +26,7 @@
                 			<div class="row">
 	                			<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
 	                				<h3>Source</h3>
-	                				<h4>Book URL</h4>
+	                				<h4>Book URL<div class="example">Example: http://scalar.usc.edu/works/guide</div></h4>
 	                				<input type="text" class="form-control source_url" placeholder="Source book URL" required />
 									<div class="alert alert-success" role="alert" style="display:none;">
 										<span class="source_msg"></span>
@@ -35,7 +34,7 @@
 	                			</div>	
 	                			<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
 	                				<h3>Destination</h3>
-	                				<h4>Login</h4>
+	                				<h4>Login<div class="example">Make sure you're logged into the destination book</div></h4>
 	                				<input type="email" class="form-control dest_id" placeholder="Login email address" required />
 									<div class="alert alert-success" role="alert" style="display:none;">
 										<span class="dest_msg"></span>
@@ -105,12 +104,23 @@
 					<textarea id="source_rdf" disabled>Loading ...</textarea>
 				</div>
 			</div>
+			<div class="row">
+				<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+					<h4>Progress</h4>
+					<div class="progress">
+						<div id="progress" class="progress-bar" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+					    	<span>0 of 0</span>
+					  	</div>
+					</div>
+					<div id="progress_log"></div>
+				</div>
+			</div>			
 		</form>
       </div>
       <div class="modal-footer">
       	<span class="book_msg">Import to <b class="book_title"></b></span>&nbsp; &nbsp;  
         <button type="button" class="btn btn-default cancel" disabled>Cancel</button> 
-        <button type="submit" class="btn btn-primary" disabled>Import</button>
+        <button type="submit" class="btn btn-primary" data-finished-text="Finished" disabled>Import</button>
       </div>
     </div><!-- /.modal-content -->
   </div><!-- /.modal-dialog -->
