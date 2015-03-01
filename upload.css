@@ -18,6 +18,10 @@ input[type='text'].dest_url {margin-bottom:12px;}
 	background-image:url(images/scalar-logo.png); background-repeat:no-repeat; width:20px; height:18px;
 	display:inline-block; background-size:cover; margin-right:10px;
 }
+.rdf-logo {
+	background-image:url(images/rdf-logo.png); background-repeat:no-repeat; width:20px; height:22px;
+	display:inline-block; background-size:cover; margin-right:10px;
+}
 
 @media (max-width: 768px) {
 	.adaptive-padding{padding-top:10px;}

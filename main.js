@@ -131,32 +131,45 @@ $(document).ready(function() {
 		var $dest_msg = $form.find('.dest_msg');
 		var source_rdf = $form.find('.source_rdf').val();
 		var dest_url = getURLParameter('dest_url');
-		$source_msg.html('Loading source RDF ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
-		$dest_msg.html('Loading destination book ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
+		var dest_id = $form.find('.dest_id').val();
+		// Check the source RDF string
+		$source_msg.html('Validating source RDF ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
 		$.fn.rdfimporter('rdf', {rdf:source_rdf}, function(rdf) {
 			if ('undefined'==typeof(rdf) || !rdf) {
-				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Invalid RDF-JSON!').parent().removeClass('alert-success').addClass('alert-danger');;
+				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Invalid RDF-JSON').parent().removeClass('alert-success').addClass('alert-danger');;
 				return;
 			}			
-			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Valid RDF-JSON!');
-			$commitform.find('#source_rdf').val(JSON.stringify(rdf, null, 1));
+			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Valid RDF-JSON');
 			$commitform.data('rdf', rdf);
 			commit();
 		});
-		$.fn.rdfimporter('book_rdf', {url:dest_url}, function(rdf) {
-			if ('undefined'==typeof(rdf) || !rdf) {
-				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Could not find destination book!').parent().removeClass('alert-success').addClass('alert-danger');;
-				return;
+		// Check the destination book's login status then get its RDF
+		$dest_msg.html('Checking destination book login status ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
+		$.fn.rdfimporter('perms', {url:dest_url}, function(status) {
+			// Move this to plugin
+			console.log(status);
+			if (!status.is_logged_in) {
+				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+				return;				
+			} else if (!status.is_author) {
+				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t an author of the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+				return;					
 			}
-			var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
-			var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
-			$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> found!');
-			$commitform.find('#dest_url').val(dest_url);
-			$commitform.find('#dest_urn').val(urn);
-			$commitform.find('#dest_id').val($form.find('.dest_id').val());
-			$commitform.find('#dest_title').val(title);
-			commit();
-		});				
+			$.fn.rdfimporter('book_rdf', {url:dest_url}, function(rdf) {
+				if ('undefined'==typeof(rdf) || !rdf) {
+					$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Either the URL is incorrect or the book isn\'t public.').parent().removeClass('alert-success').addClass('alert-danger');;
+					return;
+				}
+				var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
+				var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
+				$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> checks out.');
+				$commitform.find('#dest_url').val(dest_url);
+				$commitform.find('#dest_urn').val(urn);
+				$commitform.find('#dest_id').val($form.find('.dest_id').val());
+				$commitform.find('#dest_title').val(title);
+				commit();
+			});				
+		});			
 		return false;
 	});	
 	
