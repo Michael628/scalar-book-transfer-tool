@@ -83,17 +83,21 @@ $(document).ready(function() {
 			}
 			var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
 			var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});			
-			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Source book <b title="'+urn+'">'+title+'</b> found!');
+			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Source book <b title="'+urn+'">'+title+'</b> checks out.');
 			$commitform.find('#source_url').val(source_url);
 			commit();
 		});
 		// Check the destination book's login status then get its RDF
 		$dest_msg.html('Checking destination book login status ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
-		$.fn.rdfimporter('is_author', {url:dest_url}, function(status) {
+		$.fn.rdfimporter('perms', {url:dest_url}, function(status) {
+			// Move this to plugin
 			console.log(status);
 			if (!status.is_logged_in) {
-				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged into the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
 				return;				
+			} else if (!status.is_author) {
+				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t an author of the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+				return;					
 			}
 			$.fn.rdfimporter('book_rdf', {url:dest_url}, function(rdf) {
 				if ('undefined'==typeof(rdf) || !rdf) {
@@ -102,7 +106,7 @@ $(document).ready(function() {
 				}
 				var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
 				var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
-				$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> found!');
+				$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> checks out.');
 				$commitform.find('#dest_url').val(dest_url);
 				$commitform.find('#dest_urn').val(urn);
 				$commitform.find('#dest_id').val($form.find('.dest_id').val());

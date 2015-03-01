@@ -59,8 +59,8 @@
 		        });
 			});	 
 		},
-		is_author : function(options, callback) {
-			var url = options.url.replace(/\/$/, "")+'/author_status';
+		perms : function(options, callback) {
+			var url = options.url.replace(/\/$/, "")+'/login_status';
 			$.getJSON(url, function(status) {
 				callback(status)
 			}).fail(function() {
