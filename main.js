@@ -11,6 +11,10 @@ $(document).ready(function() {
 	if (dest && 'null'!=dest && dest.length) {
 		$('.dest_url').val(dest);
 	}	
+	var email = getURLParameter('dest_id');
+	if (email && 'null'!=email && email.length) {
+		$('.dest_id').val(email);
+	}	
 	
 	// Commit user input
 	var commit = function() {
