@@ -59,6 +59,14 @@
 		        });
 			});	 
 		},
+		is_author : function(options, callback) {
+			var url = options.url.replace(/\/$/, "")+'/author_status';
+			$.getJSON(url, function(status) {
+				callback(status)
+			}).fail(function() {
+				callback({});
+			});
+		},
 		book_rdf : function(options, callback) {
 			var url = options.url.replace(/\/$/, "")+'/rdf?format=json&callback=?';
 			$.getJSON(url, function(rdf) {

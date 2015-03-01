@@ -2,6 +2,16 @@ $(document).ready(function() {
 
 	var $wrapper = $('#wrapper');
 	
+	// Pre-load fields
+	var source = getURLParameter('source_url');
+	if (source && 'null'!=source && source.length) {
+		$('.source_url').val(source);
+	}
+	var dest = getURLParameter('dest_url');
+	if (dest && 'null'!=dest && dest.length) {
+		$('.dest_url').val(dest);
+	}	
+	
 	// Commit user input
 	var commit = function() {
 		if ('undefined'==typeof(commit.active)) commit.active = 0;
@@ -62,12 +72,13 @@ $(document).ready(function() {
 		var $source_msg = $form.find('.source_msg');
 		var $dest_msg = $form.find('.dest_msg');
 		var source_url = $form.find('.source_url').val();
-		var dest_url = getURLParameter('dest_url');
-		$source_msg.html('Loading source book ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
-		$dest_msg.html('Loading destination book ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
+		var dest_url = $form.find('.dest_url').val();
+		var dest_id = $form.find('.dest_id').val();
+		// Grab the source book RDF
+		$source_msg.html('Loading source book data ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
 		$.fn.rdfimporter('book_rdf', {url:source_url}, function(rdf) {
 			if ('undefined'==typeof(rdf) || !rdf) {
-				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Could not find source book!').parent().removeClass('alert-success').addClass('alert-danger');
+				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Either the URL is incorrect or the book isn\'t public.').parent().removeClass('alert-success').addClass('alert-danger');
 				return;
 			}
 			var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
@@ -76,20 +87,29 @@ $(document).ready(function() {
 			$commitform.find('#source_url').val(source_url);
 			commit();
 		});
-		$.fn.rdfimporter('book_rdf', {url:dest_url}, function(rdf) {
-			if ('undefined'==typeof(rdf) || !rdf) {
-				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Could not find destination book!').parent().removeClass('alert-success').addClass('alert-danger');;
-				return;
+		// Check the destination book's login status then get its RDF
+		$dest_msg.html('Checking destination book login status ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
+		$.fn.rdfimporter('is_author', {url:dest_url}, function(status) {
+			console.log(status);
+			if (!status.is_logged_in) {
+				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged into the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+				return;				
 			}
-			var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
-			var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
-			$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> found!');
-			$commitform.find('#dest_url').val(dest_url);
-			$commitform.find('#dest_urn').val(urn);
-			$commitform.find('#dest_id').val($form.find('.dest_id').val());
-			$commitform.find('#dest_title').val(title);
-			commit();
-		});		
+			$.fn.rdfimporter('book_rdf', {url:dest_url}, function(rdf) {
+				if ('undefined'==typeof(rdf) || !rdf) {
+					$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Either the URL is incorrect or the book isn\'t public.').parent().removeClass('alert-success').addClass('alert-danger');;
+					return;
+				}
+				var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
+				var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
+				$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> found!');
+				$commitform.find('#dest_url').val(dest_url);
+				$commitform.find('#dest_urn').val(urn);
+				$commitform.find('#dest_id').val($form.find('.dest_id').val());
+				$commitform.find('#dest_title').val(title);
+				commit();
+			});				
+		});	
 		return false;
 	});
 

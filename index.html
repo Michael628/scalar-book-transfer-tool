@@ -25,21 +25,30 @@
                 		<form class="container-fluid" id="urlform">		
                 			<div class="row">
 	                			<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
-	                				<h3>Source</h3>
-	                				<h4>Book URL<div class="example">Example: http://scalar.usc.edu/works/guide</div></h4>
+	                				<h3><span class="scalar-logo"></span>Source Book</h3>
+	                				<p>Enter the URL to the source book below. You'll need to make sure that it is public
+	                				(<i>Dashboard > Sharing > Make URL public?</i>) so that we can grab its content.</p>
 	                				<input type="text" class="form-control source_url" placeholder="Source book URL" required />
-									<div class="alert alert-success" role="alert" style="display:none;">
-										<span class="source_msg"></span>
-									</div>
 	                			</div>	
 	                			<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
-	                				<h3>Destination</h3>
-	                				<h4>Login<div class="example">Make sure you're logged into the destination book</div></h4>
+	                				<h3><span class="scalar-logo"></span>Destination Book</h3>
+	                				<p>Enter the URL to the destination book below. <i>You
+	                				need to be logged in to this book already</i>, so we'll also need your login email address.</p>
+	                				<input type="text" class="form-control dest_url" placeholder="Destination book URL" required />
 	                				<input type="email" class="form-control dest_id" placeholder="Login email address" required />
+	                			</div>								
+                  			</div>
+                  			<div class="row">
+                  				<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
+									<div class="alert alert-success" role="alert" style="display:none;">
+										<span class="source_msg"></span>
+									</div>                  				
+                  				</div>
+                  				<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
 									<div class="alert alert-success" role="alert" style="display:none;">
 										<span class="dest_msg"></span>
-									</div>
-	                			</div>								
+									</div>                  				
+                  				</div>
                   			</div>
                   			<div class="row">
                   				<br />
