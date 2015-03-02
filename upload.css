@@ -22,6 +22,7 @@ input[type='text'].dest_url {margin-bottom:12px;}
 	background-image:url(images/rdf-logo.png); background-repeat:no-repeat; width:20px; height:22px;
 	display:inline-block; background-size:cover; margin-right:10px;
 }
+.btn-beta-notes {float:right; color:#337ab7;}
 
 @media (max-width: 768px) {
 	.adaptive-padding{padding-top:10px;}

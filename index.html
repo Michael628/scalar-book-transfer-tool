@@ -13,6 +13,7 @@
 <div class="container-fluid">
 	<div class="row">
 		<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+			<button class="btn btn-default btn-beta-notes" data-toggle="modal" data-target="#betaNotes">Support notes</button>
         	<div role="tabpanel" data-example-id="togglable-tabs" id="wrapper">
         		<!-- Tabs -->
 				<ul id="myTab" class="nav nav-tabs" role="tablist">
@@ -144,6 +145,44 @@
     </div><!-- /.modal-content -->
   </div><!-- /.modal-dialog -->
 </div><!-- /.modal -->
+
+<div id="betaNotes" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h3 class="modal-title" id="myModalLabel"><span class="scalar-logo"></span>Support notes</h3>
+      </div>
+      <div class="modal-body">
+        <h4>This tool is presently in beta. We appreciate your patience as we add features. &mdash; The Scalar Team</h4>
+        <h4>Book</h4>
+        <p>
+        	<ul>
+        	<li><b>Book properties</b>: No attributes of the source are transfered to the destination.</li>
+        	</ul>
+        </p>
+        <h4>Pages</h4>
+        <p>
+        	<ul>
+        	<li><b>The following <i>Style</i> attributes aren't presently transfered</b>: Custom CSS style, Custom Javascript.</li>
+        	<li><b>The following <i>Metadata</i> attributes aren't presently transfered</b>: Page visibility, Content type.</li>
+        	<li><b>Thumbnails &amp; Background image &amp; Background audio</b>: These fields can link to media uploaded directly to a source book, which can cause problems should the source book be deleted (more below in Media section).</li>
+        	</ul>
+        </p>        
+        <h4>Media</h4>
+        <p>
+	        <ul>
+	        <li><b>Imported media</b>: Any media imported to a source book via an outside archive (ie, the media has an external URL) will be properly transfered.</li>
+	        <li><b>Uploaded media</b>: Media uploaded directly to a source book will not be physically transfered to a destination book.  Rather, the destination media pages will point to the URL of the media housed in the source book.  <i>This means that in the event that the source book is deleted, the media link will go dead.</i> However, this problem can be corrected using the "Replace existing" feature at Import > Local media files.</li>
+	        </ul>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

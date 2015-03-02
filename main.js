@@ -94,8 +94,6 @@ $(document).ready(function() {
 		// Check the destination book's login status then get its RDF
 		$dest_msg.html('Checking destination book login status ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
 		$.fn.rdfimporter('perms', {url:dest_url}, function(status) {
-			// Move this to plugin
-			console.log(status);
 			if (!status.is_logged_in) {
 				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
 				return;				
@@ -146,8 +144,6 @@ $(document).ready(function() {
 		// Check the destination book's login status then get its RDF
 		$dest_msg.html('Checking destination book login status ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
 		$.fn.rdfimporter('perms', {url:dest_url}, function(status) {
-			// Move this to plugin
-			console.log(status);
 			if (!status.is_logged_in) {
 				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
 				return;				
