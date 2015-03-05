@@ -288,7 +288,7 @@
 				} else if ('undefined'!=typeof(rdf[uri]["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]) && rdf[uri]["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"][0].value=='http://www.openannotation.org/ns/Annotation') {  // Relationship node ("annotation")
 					continue;
 				}
-				throw "A node is present that doesn't have a dcterms:hasVersion or a dcterms:isVersionOf";
+				throw "Not formatted for Scalar (each node should have a dcterms:hasVersion predicate, a dcterms:isVersionOf predicate, or a rdf:type oa:Annotation)";
 			}	
 			if (content != versions) throw "Number of content nodes does not match number of verion nodes";
 			return true;
