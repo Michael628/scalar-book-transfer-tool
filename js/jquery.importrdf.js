@@ -18,9 +18,9 @@
  */  
 
 /**
- * @projectDescription  Import RDF-JSON to a Scalar book
- * @author              Michael Lynch
+ * @projectDescription  Transfer RDF-JSON from a source Scalar book to a destination book
  * @author				Craig Dietrich
+ * @author				Michael Lynch
  * @version             1.0
  */
 
@@ -279,11 +279,13 @@
 			var content = 0;
 			var versions = 0;
 			for (var uri in rdf) {
-				if ('undefined'!=typeof(rdf[uri]["http://purl.org/dc/terms/hasVersion"])) {
+				if ('undefined'!=typeof(rdf[uri]["http://purl.org/dc/terms/hasVersion"])) {  // Content node
 					content++;
 					continue;
-				} else if ('undefined'!=typeof(rdf[uri]["http://purl.org/dc/terms/isVersionOf"])) {
+				} else if ('undefined'!=typeof(rdf[uri]["http://purl.org/dc/terms/isVersionOf"])) {  // Version node
 					versions++;
+					continue;
+				} else if ('undefined'!=typeof(rdf[uri]["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]) && rdf[uri]["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"][0].value=='http://www.openannotation.org/ns/Annotation') {  // Relationship node ("annotation")
 					continue;
 				}
 				throw "A node is present that doesn't have a dcterms:hasVersion or a dcterms:isVersionOf";
