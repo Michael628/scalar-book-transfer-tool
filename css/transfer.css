@@ -10,7 +10,7 @@ input[type='text'].dest_url {margin-bottom:12px;}
 #commit .book_msg {float:left;}
 .adaptive-padding{padding-top:20px;}
 .progress {margin-bottom:6px;}
-#progress_log {display:none; width:100%; height:100px; color:red; font-size:smaller; overflow:auto;}
+#progress_log {display:none; width:100%; height:50px; background-color:white; color:red; font-size:smaller; overflow:auto;}
 .progress-bar {text-align:left;}
 .progress-bar span {padding-left:5px;}
 

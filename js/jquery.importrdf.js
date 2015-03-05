@@ -59,7 +59,7 @@
 		        		var progress = ((pagination.count/pagination.total)*100)+'%';
 		        		$content_progress.css('width', progress);
 		        		$content_progress_text.text('Content '+pagination.count + ' of '+pagination.total);
-		        		if (pagination.error) $.fn.rdfimporter('error', {msg:error_msg});
+		        		if (pagination.error) $.fn.rdfimporter('error', {el:$content_progress,msg:error_msg});
 		        		// Once pages are saved, save relationships
 		        		if (pagination.count==pagination.total) {
 				        	$relations_progress = $this.find('#relations_progress'); 
@@ -68,7 +68,7 @@
 				        		var progress = ((pagination.count/pagination.total)*100)+'%';
 				        		$relations_progress.css('width', progress);
 				        		$relations_progress_text.text('Relation '+pagination.count + ' of '+pagination.total);
-				        		if (pagination.error) $.fn.rdfimporter('error', {msg:error_msg});
+				        		if (pagination.error) $.fn.rdfimporter('error', {el:$relations_progress,msg:error_msg});
 				        		// Once complete, finish
 				        		if (pagination.count==pagination.total) callback();
 				        	});				        			
@@ -157,6 +157,8 @@
 							// Extrapolated page fields
 							opts.queue[key]['scalar:slug'] = key.substr(key.lastIndexOf('/')+1); // Orig author might have a multi-segmented URL slug, but no good way to determine that if key is coming from cut-and-paste
 							opts.queue[key]['scalar:thumbnail'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#thumbnail'});
+							opts.queue[key]['scalar:background'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#background'});
+							opts.queue[key]['scalar:audio'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#audio'});
 						// Value is a Version
 						} else if(entry_type.match(/Version/) !== null) {
 				            // Use page url as key to the opts.queue
@@ -169,11 +171,20 @@
 				            opts.queue[k]['scalar:url'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'});
 				            // All other fields (including title, description, and additional metadata)
 				            var disallowed = ['art:url'];  // Items covered earlier
-				            //console.log(value);
 				            for (var p in value) {
 				            	var pnode = $.fn.rdfimporter('pnode',p);
 				            	if (null==pnode || -1!=disallowed.indexOf(pnode)) continue;
 				            	opts.queue[k][pnode] = $.fn.rdfimporter('rdf_values',{rdf:value,p:p,collapse:true});
+				            }
+				            // Reference relations
+				            var references = $.fn.rdfimporter('rdf_values',{rdf:value,p:'http://purl.org/dc/terms/references'});
+				            if (references) {
+					            for (var j = 0; j < references.length; j++) {
+					            	var old_parent_id = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'}).split(':').pop();
+					            	if ('undefined'==typeof(opts.relations[old_parent_id])) opts.relations[old_parent_id] = {};
+									if ('undefined'==typeof(opts.relations[old_parent_id]['reference'])) opts.relations[old_parent_id]['reference'] = [];	
+									opts.relations[old_parent_id]['reference'].push({child:'',hash:'',url:references[j]});
+					            }
 				            }
 				        }
 				    }
@@ -194,7 +205,8 @@
 					if ('object'!=typeof(page_data)) return;
 					$.each(page_data, function(k,v) {
 						var version_urn = $.fn.rdfimporter('rdf_value',{rdf:v,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
-						opts.urn_map[parent_urn] = version_urn  // map old version urn to new version urn
+						opts.urn_map[parent_urn] = version_urn  // map old version urn to new version URN
+						opts.urn_map[key] = version_urn;  // map old URL to new version URN
 					});
 				}).always(function(err) {
 					page_count++;
@@ -228,17 +240,16 @@
 					for (var j in opts.relations[old_parent_id][rel_type]) {
 						relate_total++;
 						var old_child_id = opts.relations[old_parent_id][rel_type][j].child;
-						var child_urn = opts.urn_map['urn:scalar:version:'+old_child_id];
+						var old_child_url = opts.relations[old_parent_id][rel_type][j].url;
+						var child_urn = ('undefined'!=typeof(old_child_url)) ? opts.urn_map[old_child_url] : opts.urn_map['urn:scalar:version:'+old_child_id];
 						var hash = opts.relations[old_parent_id][rel_type][j].hash;
 						jQuery.extend(post, $.fn.rdfimporter('hash_to_post', hash));
 						post['scalar:child_urn'] = child_urn;
-						$.post(url, post, function(relation_data){}).always(function(err) {
+						$.post(url, post, function(relation_data){}).always(function(data) {
 							relate_count++;
 							var msg = '';
-							if ('object'!=typeof(err)) {
-								var msg = 'URL isn\'t a Scalar Save API URL ['+url+'] for '+parent_urn;
-							} else if ('error'==err.statusText) {
-								var msg = 'There was an error resolving the Save API URL ['+url+'] for '+parent_urn;
+							if ('undefined'!=typeof(data.responseJSON)) {
+								var msg = 'There was an error saving relationship for '+parent_urn+' > '+child_urn+': '+data.responseJSON.error.message[0].value;
 							}
 							callback({url:url,count:relate_count,total:relate_total,error:((msg.length)?true:false)}, msg);							
 						});
@@ -249,9 +260,8 @@
 			opts.relations = {};
 		},
 		error : function(options) {
-			$progress = opts['$this'].find('#progress'); 
-			$progress_log = $progress.closest('.row').find('#progress_log');
-			$progress.addClass('progress-bar-danger');
+			$progress_log = opts['$this'].find('#progress_log');
+			options.el.addClass('progress-bar-danger');
 			if ($progress_log.is(':hidden')) $progress_log.fadeIn();
 			$progress_log.append(options.msg+"<br />");
 		},
@@ -303,7 +313,8 @@
 			for (var field in fields) {
 				switch (field) {
 					case 't':
-						var ts = fields[field].split(',');
+						var npt = fields[field].substr(fields[field].lastIndexOf(':')+1);
+						var ts = npt.split(',');
 						ret['scalar:start_seconds'] = ts[0];
 						ret['scalar:end_seconds'] = ts[1];
 						break;
