@@ -27,13 +27,8 @@
 (function($) {
 
 	var defaults = {
-			relations: {
-			  'tag':{},
-			  'path':{},
-			  'reply':{},
-			  'anno':{}
-			},
 			queue: {},
+			relations: {},
 			urn_map: {},
 			ontologies: {
 				'dc':'http://purl.org/dc/elements/1.1/',
@@ -55,16 +50,30 @@
 			return this.each(function() {
 				var $this = $(this);
 				opts['$this'] = $this;
-		        $.fn.rdfimporter('queue', options, function() {
-		        	$progress = $this.find('#progress'); 
-		        	$progress_text = $progress.find('span');
+				// Queue incoming RDF-JSON pages and relationships
+		        $.fn.rdfimporter('queue', options, function() {	        	
+		        	// Once queued, save pages
+		        	$content_progress = $this.find('#content_progress'); 
+		        	$content_progress_text = $content_progress.find('span');
 		        	$.fn.rdfimporter('pages', function(pagination, error_msg) {
 		        		var progress = ((pagination.count/pagination.total)*100)+'%';
-		        		$progress.css('width', progress);
-		        		$progress_text.text(pagination.count + ' of '+pagination.total);
+		        		$content_progress.css('width', progress);
+		        		$content_progress_text.text('Content '+pagination.count + ' of '+pagination.total);
 		        		if (pagination.error) $.fn.rdfimporter('error', {msg:error_msg});
-		        		if (pagination.count==pagination.total) callback();
-		        	});
+		        		// Once pages are saved, save relationships
+		        		if (pagination.count==pagination.total) {
+				        	$relations_progress = $this.find('#relations_progress'); 
+				        	$relations_progress_text = $relations_progress.find('span');		        	
+				        	$.fn.rdfimporter('relations', function(pagination, error_msg) {
+				        		var progress = ((pagination.count/pagination.total)*100)+'%';
+				        		$relations_progress.css('width', progress);
+				        		$relations_progress_text.text('Relation '+pagination.count + ' of '+pagination.total);
+				        		if (pagination.error) $.fn.rdfimporter('error', {msg:error_msg});
+				        		// Once complete, finish
+				        		if (pagination.count==pagination.total) callback();
+				        	});				        			
+		        		};
+		        	});			
 		        });
 			});	 
 		},
@@ -119,12 +128,13 @@
 	            // Value is a Relation
 				var res = key.match(/urn:scalar:([a-zA-Z]*?):([0-9]+?):([0-9]+)/);
 				if(res !== null) {
-					if(opts.relations[res[1]][res[2]] === undefined){
-						opts.relations[res[1]][res[2]] = [res[3]];
-					}
-					else {
-						opts.relations[res[1]][res[2]].push(res[3]);
-					}
+					// 0:urn 1:type 2:parent 3:child
+					var hash = '';
+					var target = value['http://www.openannotation.org/ns/hasTarget'][0].value;
+					if (-1!=target.indexOf('#')) hash = target.substr(target.lastIndexOf('#')+1);
+					if ('undefined'==typeof(opts.relations[res[2]])) opts.relations[res[2]] = {};
+					if ('undefined'==typeof(opts.relations[res[2]][res[1]])) opts.relations[res[2]][res[1]] = [];
+					opts.relations[res[2]][res[1]].push({child:res[3],hash:hash});
 				} else {
 					var entry_type = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'});
 					if(entry_type !== null) {
@@ -155,13 +165,6 @@
 				            if(opts.queue[k] === undefined) {
 				            	opts.queue[k] = {};
 				            }
-				            // Save old version number to create new relations
-				            var old_version_number = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'}).match(/[0-9]*$/)[0];
-				            if(opts.urn_map[k]) {
-				            	opts.urn_map[k].old = old_version_number;
-				            } else {
-				            	opts.urn_map[k] = {old:old_version_number};
-				            }
 				            // Extrapolated version fields
 				            opts.queue[k]['scalar:url'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'});
 				            // All other fields (including title, description, and additional metadata)
@@ -176,7 +179,7 @@
 				    }
 				}
 			});		
-			console.log(opts.queue);
+			console.log(opts);
 			callback();
 		},
 		pages : function(options, callback) {
@@ -186,13 +189,12 @@
 			$.each(opts.queue,function(key,value) {
 				page_total++;
 				var url = opts.dest_url+'/api/add';
-				$.post(url, value, function( page_data ) {
+				var parent_urn = value['scalar:urn'];
+				$.post(url, value, function(page_data) {
 					if ('object'!=typeof(page_data)) return;
 					$.each(page_data, function(k,v) {
-						// TODO
-						var new_version_urn = $.fn.rdfimporter('rdf_value',{rdf:v,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
-                        // build relationships where old version number is key to new version urn
-						opts.urn_map[opts.urn_map[key].old] = new_version_urn;
+						var version_urn = $.fn.rdfimporter('rdf_value',{rdf:v,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
+						opts.urn_map[parent_urn] = version_urn  // map old version urn to new version urn
 					});
 				}).always(function(err) {
 					page_count++;
@@ -216,23 +218,33 @@
 			post['native'] = 'true';
 			post['id'] = opts.dest_id;
 			post['api_key'] = '';
-			post['scalar:child_rel'] = 'annotated';
 			post['scalar:fullname'] = '';
-  
-			$.each(opts.relations, function(type, rel) {
-				$.each(rel, function(body_ver, target_ver) {
-					relate_total++;
-					post['scalar:child_urn'] = opts.urn_map[target_ver];
-					post['scalar:urn']  = opts.urn_map[body_ver];
-					$.post(url, post, function( relation_data ) {
-						relate_count++;
-                        // once all relations are processed, execute callback
-						if(relate_count == relate_total) {
-							callback();
-						}
-					});
-				});
-			});
+
+			for (var old_parent_id in opts.relations) {
+				var parent_urn = opts.urn_map['urn:scalar:version:'+old_parent_id];
+				post['scalar:urn'] = parent_urn;
+				for (var rel_type in opts.relations[old_parent_id]) {
+					post['scalar:child_rel'] = $.fn.rdfimporter('child_rel', rel_type);
+					for (var j in opts.relations[old_parent_id][rel_type]) {
+						relate_total++;
+						var old_child_id = opts.relations[old_parent_id][rel_type][j].child;
+						var child_urn = opts.urn_map['urn:scalar:version:'+old_child_id];
+						var hash = opts.relations[old_parent_id][rel_type][j].hash;
+						jQuery.extend(post, $.fn.rdfimporter('hash_to_post', hash));
+						post['scalar:child_urn'] = child_urn;
+						$.post(url, post, function(relation_data){}).always(function(err) {
+							relate_count++;
+							var msg = '';
+							if ('object'!=typeof(err)) {
+								var msg = 'URL isn\'t a Scalar Save API URL ['+url+'] for '+parent_urn;
+							} else if ('error'==err.statusText) {
+								var msg = 'There was an error resolving the Save API URL ['+url+'] for '+parent_urn;
+							}
+							callback({url:url,count:relate_count,total:relate_total,error:((msg.length)?true:false)}, msg);							
+						});
+					}
+				}
+			}
 			opts.urn_map = {}
 			opts.relations = {};
 		},
@@ -268,7 +280,66 @@
 			}	
 			if (content != versions) throw "Number of content nodes does not match number of verion nodes";
 			return true;
-		},		
+		},	
+		map_relations : function(rels) {
+			for (var rel_type in rels) {
+				for (var rel in rels[rel_type]) {
+					rels[rel_type][rel]['parent_urn'] = 'urn:craig';
+					rels[rel_type][rel]['child_urn'] = 'urn:robyn';
+				}
+			}
+			return rels;
+		},
+		hash_to_post : function(hash) {
+			var hash_arr = hash.split('&');
+			var fields = {};
+			var ret = {};
+			// First get field/value set
+			for (var j = 0; j < hash_arr.length; j++) {
+				var arr = hash_arr[j].split('=');
+				fields[arr[0]] = arr[1];
+			}
+			// Map field to post field
+			for (var field in fields) {
+				switch (field) {
+					case 't':
+						var ts = fields[field].split(',');
+						ret['scalar:start_seconds'] = ts[0];
+						ret['scalar:end_seconds'] = ts[1];
+						break;
+					case 'line':
+						var ts = fields[field].split(',');
+						ret['scalar:start_line_num'] = ts[0];
+						ret['scalar:end_line_num'] = ts[1];						
+						break;
+					case 'xywh':
+						ret['scalar:points'] = fields[field];
+						break;
+					case 'datetime':
+						ret['scalar:datetime'] = fields[field];
+						break;
+					case 'index':
+						ret['scalar:sort_number'] = fields[field];
+						break;
+				}
+			}
+			return ret;
+		},
+		child_rel : function(rel_type) {
+			switch (rel_type) {
+				case 'path':
+					return 'contained';
+				case 'anno':
+					return 'annotated';
+				case 'reply':
+					return 'replied';
+				case 'tag':
+					return 'tagged';
+				case 'reference':
+					return 'referenced';					
+			}
+			return '';
+		},
 		rdf_values : function(options) {
 			var rdf = options.rdf;
 			var p = options.p;
