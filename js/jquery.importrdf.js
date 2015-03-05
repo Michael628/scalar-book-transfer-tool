@@ -81,12 +81,12 @@
 			$.getJSON(url, function(rdf) {
 				for (var uri in rdf) break;  // First node
 				if ('http://scalar.usc.edu/2012/01/scalar-ns#Book' != rdf[uri]['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'][0].value) {
-					callback();
+					callback({err:'The returned RDF-JSON does not represent a Scalar book'});
 					return;
 				}
-				callback(rdf[uri]);
+				callback({rdf:rdf[uri]});
 			}).fail(function() {
-			    callback();
+			    callback({err:'The request to external RDF-JSON failed'});
 			});
 		},		
 		rdf : function(options, callback) {
@@ -95,21 +95,22 @@
 				var rdf = options.rdf;
 				try {
 					rdf = JSON.parse(rdf);
-				} catch (e) {
-					callback();
+					$.fn.rdfimporter('valid_scalar_rdf',rdf);
+				} catch (e) {	
+					callback({err:e});
 					return;
 				}
-				callback(rdf);
+				callback({rdf:rdf});
 			// URL to RDF-JSON
 			} else if ('undefined'!=typeof(options.url)) {
 				var url = options.url.replace(/\/$/, "")+'/rdf/instancesof/content?rec=1&ref=1&format=json&callback=?';
 			    $.getJSON( url, function(rdf) {
-			    	callback(rdf);
+			    	callback({rdf:rdf});
 			    }).fail(function() {
-			        callback();
+			        callback({err:'Failed to get external RDF-JSON'});
 			    });			
 			} else {
-				callback();
+				callback({err:'Request was improperly formatted'});
 			}
 		},	
 		queue : function(options, callback) {
@@ -194,7 +195,6 @@
 						opts.urn_map[opts.urn_map[key].old] = new_version_urn;
 					});
 				}).always(function(err) {
-					console.log(err);
 					page_count++;
 					var msg = '';
 					if ('object'!=typeof(err)) {
@@ -252,6 +252,23 @@
 			}
 			return null;
 		},
+		valid_scalar_rdf : function(rdf) {
+			// Check RDF-JSON string to make sure it's styled in valid Scalar format
+			var content = 0;
+			var versions = 0;
+			for (var uri in rdf) {
+				if ('undefined'!=typeof(rdf[uri]["http://purl.org/dc/terms/hasVersion"])) {
+					content++;
+					continue;
+				} else if ('undefined'!=typeof(rdf[uri]["http://purl.org/dc/terms/isVersionOf"])) {
+					versions++;
+					continue;
+				}
+				throw "A node is present that doesn't have a dcterms:hasVersion or a dcterms:isVersionOf";
+			}	
+			if (content != versions) throw "Number of content nodes does not match number of verion nodes";
+			return true;
+		},		
 		rdf_values : function(options) {
 			var rdf = options.rdf;
 			var p = options.p;

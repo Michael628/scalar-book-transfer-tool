@@ -54,13 +54,14 @@ $(document).ready(function() {
 			commit.active = 0;
 			$modal.find('button').removeAttr('disabled');
 		} else {
-			$.fn.rdfimporter('rdf', {url:$commitform.find('#source_url').val()}, function(rdf) {
-				if ('undefined'==typeof(rdf) || !rdf) {
-					$source_rdf.val('Could not retrieve source RDF-JSON.  Please try again.');
+			$.fn.rdfimporter('rdf', {url:$commitform.find('#source_url').val()}, function(obj) {
+				if ('undefined'!=typeof(obj.err)) {
+					var err = (obj.err.length) ? obj.err : 'Could not retrieve source RDF-JSON.  Please try again.';
+					$source_rdf.val(err);
 					return;
 				}
-				$source_rdf.val(JSON.stringify(rdf, null, 1));
-				$commitform.data('rdf', rdf);
+				$source_rdf.val(JSON.stringify(obj.rdf, null, 1));
+				$commitform.data('rdf', obj.rdf);
 				commit.active = 0;
 				$modal.find('button').removeAttr('disabled');
 			});
@@ -80,13 +81,14 @@ $(document).ready(function() {
 		var dest_id = $form.find('.dest_id').val();
 		// Grab the source book RDF
 		$source_msg.html('Loading source book data ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
-		$.fn.rdfimporter('book_rdf', {url:source_url}, function(rdf) {
-			if ('undefined'==typeof(rdf) || !rdf) {
-				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Either the URL is incorrect or the book isn\'t public.').parent().removeClass('alert-success').addClass('alert-danger');
+		$.fn.rdfimporter('book_rdf', {url:source_url}, function(obj) {
+			if ('undefined'!=typeof(obj.err)) {
+				var err = (obj.err.length) ? obj.err : 'Either the URL is incorrect or the book isn\'t public';
+				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+err).parent().removeClass('alert-success').addClass('alert-danger');
 				return;
 			}
-			var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
-			var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});			
+			var title = $.fn.rdfimporter('rdf_value',{rdf:obj.rdf,p:'http://purl.org/dc/terms/title'});
+			var urn = $.fn.rdfimporter('rdf_value',{rdf:obj.rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});		
 			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Source book <b title="'+urn+'">'+title+'</b> checks out.');
 			$commitform.find('#source_url').val(source_url);
 			commit();
@@ -95,19 +97,20 @@ $(document).ready(function() {
 		$dest_msg.html('Checking destination book login status ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
 		$.fn.rdfimporter('perms', {url:dest_url}, function(status) {
 			if (!status.is_logged_in) {
-				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book or the book doesn\'t exist at that URL.').parent().removeClass('alert-success').addClass('alert-danger');;
 				return;				
 			} else if (!status.is_author) {
 				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t an author of the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
 				return;					
 			}
-			$.fn.rdfimporter('book_rdf', {url:dest_url}, function(rdf) {
-				if ('undefined'==typeof(rdf) || !rdf) {
-					$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Either the URL is incorrect or the book isn\'t public.').parent().removeClass('alert-success').addClass('alert-danger');;
+			$.fn.rdfimporter('book_rdf', {url:dest_url}, function(obj) {
+				if ('undefined'!=typeof(obj.err)) {
+					var err = (obj.err.length) ? obj.err : 'Either the URL is incorrect or the book isn\'t public.';
+					$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+err).parent().removeClass('alert-success').addClass('alert-danger');;
 					return;
 				}
-				var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
-				var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
+				var title = $.fn.rdfimporter('rdf_value',{rdf:obj.rdf,p:'http://purl.org/dc/terms/title'});
+				var urn = $.fn.rdfimporter('rdf_value',{rdf:obj.rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
 				$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> checks out.');
 				$commitform.find('#dest_url').val(dest_url);
 				$commitform.find('#dest_urn').val(urn);
@@ -132,32 +135,34 @@ $(document).ready(function() {
 		var dest_id = $form.find('.dest_id').val();
 		// Check the source RDF string
 		$source_msg.html('Validating source RDF ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
-		$.fn.rdfimporter('rdf', {rdf:source_rdf}, function(rdf) {
-			if ('undefined'==typeof(rdf) || !rdf) {
-				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Invalid RDF-JSON').parent().removeClass('alert-success').addClass('alert-danger');;
+		$.fn.rdfimporter('rdf', {rdf:source_rdf}, function(obj) {
+			if ('undefined'!=typeof(obj.err)) {
+				var err = (obj.err.length) ? obj.err : 'Invalid RDF-JSON';
+				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+err).parent().removeClass('alert-success').addClass('alert-danger');;
 				return;
 			}			
 			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Valid RDF-JSON');
-			$commitform.data('rdf', rdf);
+			$commitform.data('rdf', obj.rdf);
 			commit();
 		});
 		// Check the destination book's login status then get its RDF
 		$dest_msg.html('Checking destination book login status ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
 		$.fn.rdfimporter('perms', {url:dest_url}, function(status) {
 			if (!status.is_logged_in) {
-				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book or the book doesn\'t exist at that URL.').parent().removeClass('alert-success').addClass('alert-danger');;
 				return;				
 			} else if (!status.is_author) {
 				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t an author of the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
 				return;					
 			}
-			$.fn.rdfimporter('book_rdf', {url:dest_url}, function(rdf) {
-				if ('undefined'==typeof(rdf) || !rdf) {
-					$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Either the URL is incorrect or the book isn\'t public.').parent().removeClass('alert-success').addClass('alert-danger');;
+			$.fn.rdfimporter('book_rdf', {url:dest_url}, function(obj) {
+				if ('undefined'!=typeof(obj.err)) {
+					var err = (obj.err.length) ? obj.err : 'Either the URL is incorrect or the book isn\'t public.';
+					$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+err).parent().removeClass('alert-success').addClass('alert-danger');;
 					return;
 				}
-				var title = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://purl.org/dc/terms/title'});
-				var urn = $.fn.rdfimporter('rdf_value',{rdf:rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
+				var title = $.fn.rdfimporter('rdf_value',{rdf:obj.rdf,p:'http://purl.org/dc/terms/title'});
+				var urn = $.fn.rdfimporter('rdf_value',{rdf:obj.rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
 				$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> checks out.');
 				$commitform.find('#dest_url').val(dest_url);
 				$commitform.find('#dest_urn').val(urn);
