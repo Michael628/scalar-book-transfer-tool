@@ -93,7 +93,7 @@
 					callback({err:'The returned RDF-JSON does not represent a Scalar book'});
 					return;
 				}
-				callback({rdf:rdf[uri]});
+				callback({uri:uri,rdf:rdf[uri]});
 			}).fail(function() {
 			    callback({err:'The request to external RDF-JSON failed'});
 			});
