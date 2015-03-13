@@ -23,7 +23,7 @@ $(document).ready(function() {
 		if (commit.active<2) return;
 		$commitform = $('#commitform');
 		$source_rdf = $commitform.find('#source_rdf');
-		$source_rdf.val('Loading ...');
+		$source_rdf.val('Loading (this may take some time) ...');
 		$modal = $commitform.closest('.modal');
 		$modal.find('.book_title').html($commitform.find('#dest_title').val());
 		$modal.modal('show');
