@@ -37,7 +37,9 @@
 				'sioc':'http://rdfs.org/sioc/ns#',
 				'sioctypes':'http://rdfs.org/sioc/types#',
 				'ov':'http://open.vocab.org/terms/',
-				'scalar':'http://scalar.usc.edu/2012/01/scalar-ns#'		
+				'scalar':'http://scalar.usc.edu/2012/01/scalar-ns#',
+				'exif':'http://ns.adobe.com/exif/1.0/',
+				'iptc':'http://ns.exiftool.ca/IPTC/IPTC/1.0/'
 			}
 	};
 
@@ -296,15 +298,6 @@
 			if (content != versions) throw "Number of content nodes does not match number of verion nodes";
 			return true;
 		},	
-		map_relations : function(rels) {
-			for (var rel_type in rels) {
-				for (var rel in rels[rel_type]) {
-					rels[rel_type][rel]['parent_urn'] = 'urn:craig';
-					rels[rel_type][rel]['child_urn'] = 'urn:robyn';
-				}
-			}
-			return rels;
-		},
 		hash_to_post : function(hash) {
 			var hash_arr = hash.split('&');
 			var fields = {};
