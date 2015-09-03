@@ -35,20 +35,26 @@ $(document).ready(function() {
 		});
 		$modal.find('button[type="submit"]').unbind("click");
 		$modal.find('button[type="submit"]').click(function() {
+			$modal.find('button[type="submit"]').attr('disabled', 'disabled');
 			$source_url = $commitform.find('#source_url').val();
 			$dest_id = $commitform.find('#dest_id').val();
 			$dest_urn = $commitform.find('#dest_urn').val();
 			$dest_url = $commitform.find('#dest_url').val().replace(/\/$/, "");
 			$modal.rdfimporter({rdf:$commitform.data('rdf'),source_url:$source_url,dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url}, function() {
 				var $this = $modal.find('button[type="submit"]');
+				$this.removeAttr('disabled');
 				$this.button('finished');
 				$this.unbind('click');
 				$this.click(function() {
 					$this.unbind('click');
 					$this.button('reset');
-					$modal.find('#progress').css('width', '0%');
+					$modal.find('#content_progress, #relations_progress').css('width', '0%').find('span').text('');
 					$modal.modal('hide');
 				});
+				$('#urlform button[type="submit"], #rdfform button[type="submit"]').hide().prev().show().find('a').click(function() {
+					$('#urlform button[type="submit"], #rdfform button[type="submit"]').show().prev().hide();
+					$('.source_msg, .dest_msg').empty().parent().hide();
+				});				
 				commit.active = 0;
 			});
 		});

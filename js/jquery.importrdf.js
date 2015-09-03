@@ -237,19 +237,20 @@
 			var relate_count = 0;
 			var relate_total = 0;
 			var url = opts.dest_url+'/api/relate';
-			var post = {};
-			post['action'] = 'RELATE';
-			post['native'] = 'true';
-			post['id'] = opts.dest_id;
-			post['api_key'] = '';
-			post['scalar:fullname'] = '';
-
 			for (var old_parent_id in opts.relations) {
 				var parent_urn = opts.urn_map['urn:scalar:version:'+old_parent_id];
-				post['scalar:urn'] = parent_urn;
 				for (var rel_type in opts.relations[old_parent_id]) {
-					post['scalar:child_rel'] = $.fn.rdfimporter('child_rel', rel_type);
 					for (var j in opts.relations[old_parent_id][rel_type]) {
+						// Start a new post object here so values don't persist from one loop to the next
+						var post = {};
+						post['action'] = 'RELATE';
+						post['native'] = 'true';
+						post['id'] = opts.dest_id;
+						post['api_key'] = '';
+						post['scalar:fullname'] = '';
+						post['scalar:urn'] = parent_urn;
+						post['scalar:child_rel'] = $.fn.rdfimporter('child_rel', rel_type);
+						// Write the relational values
 						relate_total++;
 						var old_child_id = opts.relations[old_parent_id][rel_type][j].child;
 						var old_child_url = opts.relations[old_parent_id][rel_type][j].url;
