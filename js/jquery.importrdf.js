@@ -160,10 +160,11 @@
 							opts.queue[key]['urn:scalar:book'] = opts.dest_urn;
 							opts.queue[key]['rdf:type'] = entry_type;
 							// Extrapolated page fields
-							opts.queue[key]['scalar:slug'] = key.substr(key.lastIndexOf('/')+1); // Orig author might have a multi-segmented URL slug, but no good way to determine that if key is coming from cut-and-paste
-							opts.queue[key]['scalar:thumbnail'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#thumbnail'});
-							opts.queue[key]['scalar:background'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#background'});
-							opts.queue[key]['scalar:audio'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#audio'});
+							opts.queue[key]['scalar:slug'] = key.substr(options.source_url.length+1);  // options.source_url is the book URL
+							opts.queue[key]['scalar:thumbnail'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#thumbnail'}), options.source_url);
+							opts.queue[key]['scalar:background'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#background'}), options.source_url);
+							opts.queue[key]['scalar:audio'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#audio'}), options.source_url);
+							opts.queue[key]['scalar:banner'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#banner'}), options.source_url);
 						// Value is a Version
 						} else if(entry_type.match(/Version/) !== null) {
 				            // Use page url as key to the opts.queue
@@ -174,12 +175,17 @@
 				            }
 				            // Extrapolated version fields
 				            opts.queue[k]['scalar:url'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'});
+				            opts.queue[k]['scalar:default_view'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#defaultView'});
 				            // All other fields (including title, description, and additional metadata)
-				            var disallowed = ['art:url'];  // Items covered earlier
+				            var disallowed = ['art:url','scalar:defaultView'];  // Items covered earlier
 				            for (var p in value) {
 				            	var pnode = $.fn.rdfimporter('pnode',p);
 				            	if (null==pnode || -1!=disallowed.indexOf(pnode)) continue;
 				            	opts.queue[k][pnode] = $.fn.rdfimporter('rdf_values',{rdf:value,p:p,collapse:true});
+				            }
+				            // Replace relative URLs with absolute URLs in the content area
+				            if ('undefined'!=typeof(opts.queue[k]['sioc:content'])) {
+				            	opts.queue[k]['sioc:content'] = opts.queue[k]['sioc:content'].replace(/(<(a|img)[^>]+(href|src)=")(?!http)([^"]+)/g, '$1'+options.source_url+'/$4');  // http://stackoverflow.com/questions/4882255/regular-expression-for-relative-links-only
 				            }
 				            // Reference relations
 				            var references = $.fn.rdfimporter('rdf_values',{rdf:value,p:'http://purl.org/dc/terms/references'});
@@ -191,6 +197,7 @@
 									opts.relations[old_parent_id]['reference'].push({child:'',hash:'',url:references[j]});
 					            }
 				            }
+				            delete opts.queue[k]['dcterms:references'];
 				        }
 				    }
 				}
@@ -368,7 +375,13 @@
 			if('undefined' == typeof(rdf[p]) || !rdf[p]) return null;
 			var value = rdf[p][0].value;
 			return value;
-		}		
+		},
+		abs_url : function(url, prefix) {
+			if (!url || !url.length) return url;
+			if (-1 != url.indexOf(':')) return url;
+			if (prefix.substr(prefix.length-1,1)!='/') prefix = prefix+'/';
+			return prefix+url;
+		}
 	};
 
 	$.fn.rdfimporter = function(methodOrOptions) {		

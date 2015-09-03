@@ -23,7 +23,7 @@ $(document).ready(function() {
 		if (commit.active<2) return;
 		$commitform = $('#commitform');
 		$source_rdf = $commitform.find('#source_rdf');
-		$source_rdf.val('Loading (this may take some time) ...');
+		$source_rdf.val('Loading (this may take some time depending on the size of the source book) ...');
 		$modal = $commitform.closest('.modal');
 		$modal.find('.book_title').html($commitform.find('#dest_title').val());
 		$modal.modal('show');
@@ -35,10 +35,11 @@ $(document).ready(function() {
 		});
 		$modal.find('button[type="submit"]').unbind("click");
 		$modal.find('button[type="submit"]').click(function() {
-			$dest_id = $commitform.find('#dest_id').val()
+			$source_url = $commitform.find('#source_url').val();
+			$dest_id = $commitform.find('#dest_id').val();
 			$dest_urn = $commitform.find('#dest_urn').val();
 			$dest_url = $commitform.find('#dest_url').val().replace(/\/$/, "");
-			$modal.rdfimporter({rdf:$commitform.data('rdf'),dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url}, function() {
+			$modal.rdfimporter({rdf:$commitform.data('rdf'),source_url:$source_url,dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url}, function() {
 				var $this = $modal.find('button[type="submit"]');
 				$this.button('finished');
 				$this.unbind('click');
