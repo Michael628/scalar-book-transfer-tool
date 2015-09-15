@@ -19,6 +19,7 @@
 				<ul id="myTab" class="nav nav-tabs" role="tablist">
               		<li role="presentation" class="active"><a href="#url" id="url-tab" role="tab" data-toggle="tab" aria-controls="url" aria-expanded="true">Book URL</a></li>
               		<li role="presentation"><a href="#rdf" role="tab" id="rdf-tab" data-toggle="tab" aria-controls="rdf">Paste RDF</a></li>
+              		<li role="presentation"><a href="#file" role="tab" id="file-tab" data-toggle="tab" aria-controls="rdf">Upload File</a></li>
             	</ul>
             	<div id="tabContent" class="tab-content">
             		<!-- Import by URL -->
@@ -54,7 +55,7 @@
                   			<div class="row">
                   				<br />
                   				<div style="text-align:right;" class="col-lg-12 col-md-12 col-sm-12 col-xs-12" style="text-align:right;">
-                  					  <span id="complete_msg" class="alert alert-success">Transfer is complete! <a href="javascript:void(null);">start over</a></span>
+                  					  <span class="complete_msg alert alert-success">Transfer is complete! <a href="javascript:void(null);">start over</a></span>
 									  <button type="submit" class="btn btn-primary">Continue</button>
 								</div>
 				            </div>                   			
@@ -94,12 +95,65 @@
                   			<div class="row">
                   				<br />
                   				<div style="text-align:right;" class="col-lg-12 col-md-12 col-sm-12 col-xs-12" style="text-align:right;">
-                  					  <span id="complete_msg" class="alert alert-success">Transfer is complete! <a href="javascript:void(null);">start over</a></span>
+                  					  <span class="complete_msg alert alert-success">Transfer is complete! <a href="javascript:void(null);">start over</a></span>
 									  <button type="submit" class="btn btn-primary">Continue</button>
 								</div>
 				            </div> 
                 		</form>
               		</div>
+              		<!--  Import by uploaded file -->
+              		<div role="tabpanel" class="tab-pane fade" id="file" aria-labelledby="file-tab">
+                		<form id="fileform" enctype="multipart/form-data">
+               				<div class="row">
+	                			<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
+	                				<h3><span class="rdf-logo"></span>Source RDF-JSON File</h3>
+	                				<p>Select a Scalar-formatted RDF-JSON file from your computer using the button below.  Scalar's ontology
+	                				lists nodes and their most recent version &mdash; see 
+	                				<a target="_blank" href="http://scalar.usc.edu/features/open-api/">Scalar's API Reference</a>.</p>
+	                				<script>
+	                				if (window.File && window.FileReader && window.FileList && window.Blob) {
+		                				var str = '';
+		                	            str += '<div class="input-group">';
+		                                str += '<span class="input-group-btn">';
+		                                str += '<span class="btn btn-primary btn-file">Browse&hellip; <input type="file" id="fileUpload" name="filesUpload" /></span>';
+		                                str += '</span>';
+		                                str += '<input type="text" class="form-control" readonly>';
+		                            	str += '</div>';
+	                					document.write(str);
+	                				} else {
+	                					document.write('<p><b>Your browser does not support the HTML5 File Upload API. Please update your browser.</b></p>');
+	                				}
+	                				</script>
+	                			</div>									
+	                			<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
+	                				<h3><span class="scalar-logo"></span>Destination Book</h3>
+	                				<p>Enter the URL to the destination book below. <i>You
+	                				need to be logged in to this book already</i>, so we'll also need your login email address.</p>
+	                				<input type="text" class="form-control dest_url" placeholder="Destination book URL" required />
+	                				<input type="email" class="form-control dest_id" placeholder="Login email address" required />
+	                			</div>								
+                  			</div> 
+                  			<div class="row">
+                  				<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
+									<div class="alert alert-success" role="alert" style="display:none;">
+										<span class="source_msg"></span>
+									</div>                  				
+                  				</div>
+                  				<div class="adaptive-padding col-lg-6 col-md-6 col-sm-6 col-xs-12">
+									<div class="alert alert-success" role="alert" style="display:none;">
+										<span class="dest_msg"></span>
+									</div>                  				
+                  				</div>
+                  			</div>                  			           			
+                  			<div class="row">
+                  				<br />
+                  				<div style="text-align:right;" class="col-lg-12 col-md-12 col-sm-12 col-xs-12" style="text-align:right;">
+                  					  <span class="complete_msg alert alert-success">Transfer is complete! <a href="javascript:void(null);">start over</a></span>
+									  <button type="submit" class="btn btn-primary">Continue</button>
+								</div>
+				            </div> 
+                		</form>
+              		</div>              		
             	</div><!-- /tabContent -->
          	 </div><!-- /tabpanel -->
       	</div><!-- /col -->

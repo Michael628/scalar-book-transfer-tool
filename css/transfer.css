@@ -14,7 +14,7 @@ input[type='text'].dest_url {margin-bottom:12px;}
 #progress_log {display:none; width:100%; height:50px; background-color:white; color:red; font-size:smaller; overflow:auto;}
 .progress-bar {text-align:left;}
 .progress-bar span {padding-left:5px;}
-#complete_msg {display:none;}
+.complete_msg {display:none;}
 
 .scalar-logo {
 	background-image:url(images/scalar-logo.png); background-repeat:no-repeat; width:20px; height:18px;
@@ -28,4 +28,28 @@ input[type='text'].dest_url {margin-bottom:12px;}
 
 @media (max-width: 768px) {
 	.adaptive-padding{padding-top:10px;}
+}
+
+/* File upload */
+#fileForm .btn-file {
+  position: relative;
+  overflow: hidden;
+}
+#fileForm .btn-file input[type=file] {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 100%;
+  min-height: 100%;
+  font-size: 100px;
+  text-align: right;
+  filter: alpha(opacity=0);
+  opacity: 0;
+  background: red;
+  cursor: inherit;
+  display: block;
+}
+#fileForm input[readonly] {
+  background-color: white !important;
+  cursor: text !important;
 }

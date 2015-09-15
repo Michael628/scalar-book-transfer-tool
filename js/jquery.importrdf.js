@@ -21,7 +21,7 @@
  * @projectDescription  Transfer RDF-JSON from a source Scalar book to a destination book
  * @author				Craig Dietrich
  * @author				Michael Lynch
- * @version             1.0
+ * @version             1.1
  */
 
 (function($) {
@@ -122,12 +122,47 @@
 			    	callback({rdf:rdf});
 			    }).fail(function() {
 			        callback({err:'Failed to get external RDF-JSON'});
-			    });			
+			    });
+			// File to RDF-JSON
+			} else if ('undefined'!=typeof(options.file)) {
+				if (!options.file.files.length) {
+					callback({err:'No file selected'});
+					return;
+				}			
+				var source_file = options.file.files[0];
+				var textType = /text.*/;
+				// Type is unpredictable so commenting out for now
+				/*
+				if (!source_file.type.match(textType)) {
+					callback({err:'File is not a text file'});
+					return;	
+				}
+				*/
+				var reader = new FileReader();
+				reader.onload = function(e) {
+					var rdf = reader.result;
+					try {
+						rdf = JSON.parse(rdf);
+						$.fn.rdfimporter('valid_scalar_rdf',rdf);
+					} catch (e) {	
+						callback({err:e});
+						return;
+					}
+					callback({rdf:rdf});
+				}
+				reader.readAsText(source_file);
 			} else {
 				callback({err:'Request was improperly formatted'});
 			}
 		},	
 		queue : function(options, callback) {
+			
+			$.fn.rdfimporter('queue_scalar', options, callback);
+		}, 
+		queue_mep : function(options, callback) {
+			
+		},
+		queue_scalar : function(options, callback) {
 			if ('function'==typeof(options)) callback = options;
 			$.each(opts.rdf, function(key,value) {
 	            // Value is a Relation
@@ -341,6 +376,21 @@
 				}
 			}
 			return ret;
+		},
+		source_url_from_rdf_fields : function(rdf) {
+			var source_url = '';
+			// Get URL from user node in Scalar-formatted RDF
+			for (var uri in rdf) {
+				if (
+					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo']) && 
+					rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/users/') != -1
+				   ) {
+					var index = rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/users/');
+					source_url = rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.substr(0, index);
+					break;
+				}
+			}
+			return source_url;
 		},
 		child_rel : function(rel_type) {
 			switch (rel_type) {

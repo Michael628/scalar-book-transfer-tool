@@ -16,6 +16,16 @@ $(document).ready(function() {
 		$('.dest_id').val(email);
 	}	
 	
+	// File upload -- http://www.abeautifulsite.net/whipping-file-inputs-into-shape-with-bootstrap-3
+	$(document).on('change', '.btn-file :file', function() {
+		var input = $(this), numFiles = input.get(0).files ? input.get(0).files.length : 1, label = input.val().replace(/\\/g, '/').replace(/.*\//, '');
+		input.trigger('fileselect', [numFiles, label]);
+	});
+	$('.btn-file :file').on('fileselect', function(event, numFiles, label) {
+		var input = $(this).parents('.input-group').find(':text'), log = numFiles > 1 ? numFiles + ' files selected' : label;
+		if ( input.length ) input.val(log);
+	});
+	
 	// Commit user input
 	var commit = function() {
 		if ('undefined'==typeof(commit.active)) commit.active = 0;
@@ -51,8 +61,8 @@ $(document).ready(function() {
 					$modal.find('#content_progress, #relations_progress').css('width', '0%').find('span').text('');
 					$modal.modal('hide');
 				});
-				$('#urlform button[type="submit"], #rdfform button[type="submit"]').hide().prev().show().find('a').click(function() {
-					$('#urlform button[type="submit"], #rdfform button[type="submit"]').show().prev().hide();
+				$('#urlform button[type="submit"], #rdfform button[type="submit"], #fileform button[type="submit"]').hide().prev().show().find('a').click(function() {
+					$('#urlform button[type="submit"], #rdfform button[type="submit"], #fileform button[type="submit"]').show().prev().hide();
 					$('.source_msg, .dest_msg').empty().parent().hide();
 				});				
 				commit.active = 0;
@@ -153,6 +163,7 @@ $(document).ready(function() {
 				return;
 			}			
 			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Valid RDF-JSON');
+			$commitform.find('#source_url').val( $.fn.rdfimporter('source_url_from_rdf_fields', obj.rdf) );
 			$commitform.data('rdf', obj.rdf);
 			commit();
 		});
@@ -185,6 +196,60 @@ $(document).ready(function() {
 		});						
 		return false;
 	});	
+	
+	// Validate user input from file upload form
+	$('#fileform').submit(function() {
+		commit.active = 0;
+		var $form = $(this);
+		var $commitform = $('#commitform');
+		$commitform.removeData('rdf');
+		var $source_msg = $form.find('.source_msg');
+		var $dest_msg = $form.find('.dest_msg');
+		var dest_url = getURLParameter('dest_url');
+		var dest_id = $form.find('.dest_id').val();
+		var source_file_obj = document.getElementById('fileUpload');
+		// Checking file and validating
+		$source_msg.html('Reading &amp; validating source RDF ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
+		$.fn.rdfimporter('rdf', {file:source_file_obj}, function(obj) {
+			if ('undefined'!=typeof(obj.err)) {
+				var err = (obj.err.length) ? obj.err : 'Invalid RDF-JSON';
+				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+err).parent().removeClass('alert-success').addClass('alert-danger');
+				return;
+			}			
+			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Valid RDF-JSON');
+			$commitform.find('#source_url').val( $.fn.rdfimporter('source_url_from_rdf_fields', obj.rdf) );
+			$commitform.data('rdf', obj.rdf);
+			commit();
+		});
+		// Validate destination book URL then check logged in status
+		$dest_msg.html('Checking destination book login status ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
+		$.fn.rdfimporter('book_rdf', {url:dest_url}, function(obj) {
+			if ('undefined'!=typeof(obj.err)) {
+				var err = (obj.err.length) ? obj.err : 'Either the URL is incorrect or the book isn\'t public.';
+				$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+err).parent().removeClass('alert-success').addClass('alert-danger');
+				return;
+			}
+			dest_url = obj.uri;  // This ensures that the URL is to the book regardless of whether the user inputted a page in that book
+			$.fn.rdfimporter('perms', {url:dest_url}, function(status) {
+				if (!status.is_logged_in) {
+					$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t logged in to the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+					return;				
+				} else if (!status.is_author) {
+					$dest_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+dest_id+' isn\'t an author of the destination book.').parent().removeClass('alert-success').addClass('alert-danger');;
+					return;					
+				}			
+				var title = $.fn.rdfimporter('rdf_value',{rdf:obj.rdf,p:'http://purl.org/dc/terms/title'});
+				var urn = $.fn.rdfimporter('rdf_value',{rdf:obj.rdf,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
+				$dest_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Destination book <b title="'+urn+'">'+title+'</b> checks out.');
+				$commitform.find('#dest_url').val(dest_url);
+				$commitform.find('#dest_urn').val(urn);
+				$commitform.find('#dest_id').val($form.find('.dest_id').val());
+				$commitform.find('#dest_title').val(title);
+				commit();
+			});
+		});						
+		return false;
+	});		
 	
 });
 
