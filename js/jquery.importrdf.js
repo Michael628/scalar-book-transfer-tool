@@ -29,7 +29,7 @@
 	var defaults = {
 			queue: {},
 			relations: {},
-			urn_map: {},
+			url_map: {},
 			ontologies: {
 				'dc':'http://purl.org/dc/elements/1.1/',
 				'dcterms':'http://purl.org/dc/terms/',
@@ -50,7 +50,7 @@
 		init : function(options, callback) {
 			opts = $.extend( {}, defaults, options );
 			opts.queue = {};
-			opts.urn_map = {}
+			opts.url_map = {}
 			opts.relations = {};			
 			return this.each(function() {
 				var $this = $(this);
@@ -68,7 +68,7 @@
 		        		// Once pages are saved, save relationships
 		        		if (pagination.count==pagination.total) {
 				        	$relations_progress = $this.find('#relations_progress'); 
-				        	$relations_progress_text = $relations_progress.find('span');		        	
+				        	$relations_progress_text = $relations_progress.find('span');
 				        	$.fn.rdfimporter('relations', function(pagination, error_msg) {
 				        		var progress = ((pagination.count/pagination.total)*100)+'%';
 				        		$relations_progress.css('width', progress);
@@ -156,35 +156,33 @@
 			}
 		},	
 		queue : function(options, callback) {
-			
-			$.fn.rdfimporter('queue_scalar', options, callback);
-		}, 
-		queue_mep : function(options, callback) {
-			
-		},
-		queue_scalar : function(options, callback) {
 			if ('function'==typeof(options)) callback = options;
 			$.each(opts.rdf, function(key,value) {
-	            // Value is a Relation
-				var res = key.match(/urn:scalar:([a-zA-Z]*?):([0-9]+?):([0-9]+)/);
-				if(res !== null) {
-					// 0:urn 1:type 2:parent 3:child
-					var hash = '';
-					var target = value['http://www.openannotation.org/ns/hasTarget'][0].value;
-					if (-1!=target.indexOf('#')) hash = target.substr(target.lastIndexOf('#')+1);
-					if ('undefined'==typeof(opts.relations[res[2]])) opts.relations[res[2]] = {};
-					if ('undefined'==typeof(opts.relations[res[2]][res[1]])) opts.relations[res[2]][res[1]] = [];
-					opts.relations[res[2]][res[1]].push({child:res[3],hash:hash});
-				} else {
-					var entry_type = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'});
-					if(entry_type !== null) {
-						// Value is a Page
-						if(entry_type.match(/Media|Composite/) !== null) {
-							if(opts.queue[key] === undefined) {
+						var entry_type = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'});
+						// Value is a relationship (oac:Annotation)
+						if ('http://www.openannotation.org/ns/Annotation' == entry_type) {
+							var hash = '';
+							var target = value['http://www.openannotation.org/ns/hasTarget'][0].value;
+							if (-1!=target.indexOf('#')) hash = target.substr(target.lastIndexOf('#')+1);
+							var target_uri = (-1!=target.indexOf('#')) ? target.substr(0, target.indexOf('#')) : target;
+							if (-1!==target_uri.search(/^(.*)\.[0-9]*$/)) target_uri = target_uri.match(/^(.*)\.[0-9]*$/)[1]; // remove .#
+							if (!target_uri.length || target_uri == opts.source_url) return;  // Category rel node
+							var rel_type = $.fn.rdfimporter('hash_to_rel_type', hash);
+							var body_uri = value['http://www.openannotation.org/ns/hasBody'][0].value;
+							if (-1!==body_uri.search(/^(.*)\.[0-9]*$/)) body_uri = body_uri.match(/^(.*)\.[0-9]*$/)[1]; // remove .#
+							if ('undefined'==typeof(opts.relations[body_uri])) opts.relations[body_uri] = {};
+							if ('undefined'==typeof(opts.relations[body_uri][rel_type])) opts.relations[body_uri][rel_type] = [];
+							opts.relations[body_uri][rel_type].push({child:target_uri,hash:hash});
+					    // Value is a user node (foaf:Person)
+						} else if (entry_type !== null && entry_type.search(/Person/) !== -1) {
+							// This is handled in the nodes themselves
+						// Value is a Scalar Page (scalar:Composite or scalar:Media)
+						} else if (entry_type !== null && entry_type.search(/Media|Composite/) !== -1) {						
+							if (opts.queue[key] === undefined) {
 								opts.queue[key] = {};
 							}
 							// Required API handshake fields
-							opts.queue[key].action = 'ADD';
+ 							opts.queue[key].action = 'ADD';
 							opts.queue[key].native = 'true';
 							opts.queue[key]['scalar:urn'] = '';
 							opts.queue[key].id = opts.dest_id;
@@ -200,12 +198,12 @@
 							opts.queue[key]['scalar:background'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#background'}), options.source_url);
 							opts.queue[key]['scalar:audio'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#audio'}), options.source_url);
 							opts.queue[key]['scalar:banner'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#banner'}), options.source_url);
-						// Value is a Version
-						} else if(entry_type.match(/Version/) !== null) {
-				            // Use page url as key to the opts.queue
+						// Value is a Scalar Version (scalar:Version)
+						} else if (entry_type !== null && entry_type.search(/Version/) !== -1) {
+				            // Use page url as key to the opts.queue by removing .# extension 
 				            var k = key.match(/^(.*)\.[0-9]*$/)[1];
 				            // Init queue if doesn't exist
-				            if(opts.queue[k] === undefined) {
+				            if (opts.queue[k] === undefined) {
 				            	opts.queue[k] = {};
 				            }
 				            // Extrapolated version fields
@@ -226,18 +224,70 @@
 				            var references = $.fn.rdfimporter('rdf_values',{rdf:value,p:'http://purl.org/dc/terms/references'});
 				            if (references) {
 					            for (var j = 0; j < references.length; j++) {
-					            	var old_parent_id = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'}).split(':').pop();
-					            	if ('undefined'==typeof(opts.relations[old_parent_id])) opts.relations[old_parent_id] = {};
-									if ('undefined'==typeof(opts.relations[old_parent_id]['reference'])) opts.relations[old_parent_id]['reference'] = [];	
-									opts.relations[old_parent_id]['reference'].push({child:'',hash:'',url:references[j]});
+					            	if ('undefined'==typeof(opts.relations[k])) opts.relations[k] = {};
+									if ('undefined'==typeof(opts.relations[k]['reference'])) opts.relations[k]['reference'] = [];	
+									opts.relations[k]['reference'].push({child:references[j],hash:''});
 					            }
 				            }
 				            delete opts.queue[k]['dcterms:references'];
-				        }
-				    }
-				}
+						// Value is a combined page/version node
+						} else {
+							if (opts.queue[key] === undefined) {
+								opts.queue[key] = {};
+							}
+							// Page is either media or a composite
+							var _entry_type = 'http://scalar.usc.edu/2012/01/scalar-ns#Composite';
+							if ( null!=$.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'}) ) {
+								_entry_type = 'http://scalar.usc.edu/2012/01/scalar-ns#Media';
+							}
+							// Required API handshake fields
+ 							opts.queue[key].action = 'ADD';
+							opts.queue[key].native = 'true';
+							opts.queue[key]['scalar:urn'] = '';
+							opts.queue[key].id = opts.dest_id;
+							opts.queue[key].api_key = '';
+							opts.queue[key]['scalar:child_urn'] = opts.dest_urn;
+							opts.queue[key]['scalar:child_type'] = 'http://scalar.usc.edu/2012/01/scalar-ns#Book';
+							opts.queue[key]['scalar:child_rel'] = 'page';
+							opts.queue[key]['urn:scalar:book'] = opts.dest_urn;
+							opts.queue[key]['rdf:type'] = _entry_type;
+							// Extrapolated page fields
+							var slug = key.replace(options.source_url,'');
+							if ('/'==slug.substr(0,1)) slug = slug.substr(1);
+							opts.queue[key]['scalar:slug'] = slug;
+							opts.queue[key]['scalar:thumbnail'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#thumbnail'}), options.source_url);
+							opts.queue[key]['scalar:background'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#background'}), options.source_url);
+							opts.queue[key]['scalar:audio'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#audio'}), options.source_url);
+							opts.queue[key]['scalar:banner'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#banner'}), options.source_url);
+							if (key.search(/term/i) !== -1) opts.queue[key]['scalar:category'] = 'term';
+				            // Extrapolated version fields
+				            opts.queue[key]['scalar:url'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'});
+				            opts.queue[key]['scalar:default_view'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#defaultView'});
+				            if ($.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/2000/01/rdf-schema#label'})) {
+				            	opts.queue[key]['dcterms:title'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/2000/01/rdf-schema#label'});
+				            }
+				            if ($.fn.rdfimporter('rdf_value',{rdf:value,p:'http://xmlns.com/foaf/0.1/Page'})) {
+				            	opts.queue[key]['dcterms:source'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://xmlns.com/foaf/0.1/Page'});
+				            }	
+				            if ($.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/ns/prov#wasAttributedTo'})) {
+				            	var wasAttributedTo = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/ns/prov#wasAttributedTo'});
+				            	if ('undefined'!=typeof(opts.rdf[wasAttributedTo])) {
+				            		opts.queue[key]['dcterms:creator'] = $.fn.rdfimporter('rdf_value',{rdf:opts.rdf[wasAttributedTo],p:'http://xmlns.com/foaf/0.1/name'});;
+				            	}
+				            }
+				            // All other fields (including title, description, and additional metadata)
+				            var disallowed = ['art:url','scalar:defaultView'];  // Items covered earlier
+				            for (var p in value) {
+				            	var pnode = $.fn.rdfimporter('pnode',p);
+				            	if (null==pnode || -1!=disallowed.indexOf(pnode)) continue;
+				            	opts.queue[key][pnode] = $.fn.rdfimporter('rdf_values',{rdf:value,p:p,collapse:true});
+				            }
+				            // Replace relative URLs with absolute URLs in the content area
+				            if ('undefined'!=typeof(opts.queue[key]['sioc:content'])) {
+				            	opts.queue[key]['sioc:content'] = opts.queue[key]['sioc:content'].replace(/(<(a|img)[^>]+(href|src)=")(?!http)([^"]+)/g, '$1'+options.source_url+'/$4');  // http://stackoverflow.com/questions/4882255/regular-expression-for-relative-links-only
+				            }							
+						};
 			});		
-			console.log(opts);
 			callback();
 		},
 		pages : function(options, callback) {
@@ -247,13 +297,11 @@
 			$.each(opts.queue,function(key,value) {
 				page_total++;
 				var url = opts.dest_url+'/api/add';
-				var parent_urn = value['scalar:urn'];
 				$.post(url, value, function(page_data) {
 					if ('object'!=typeof(page_data)) return;
 					$.each(page_data, function(k,v) {
-						var version_urn = $.fn.rdfimporter('rdf_value',{rdf:v,p:'http://scalar.usc.edu/2012/01/scalar-ns#urn'});
-						opts.urn_map[parent_urn] = version_urn  // map old version urn to new version URN
-						opts.urn_map[key] = version_urn;  // map old URL to new version URN
+						if ('/'==k.substr(k.length-1, 1)) k = k.substr(0, k.length-1);
+						opts.url_map[key] = k.match(/^(.*)\.[0-9]*$/)[1];
 					});
 				}).always(function(err) {
 					page_count++;
@@ -272,27 +320,30 @@
 			var relate_count = 0;
 			var relate_total = 0;
 			var url = opts.dest_url+'/api/relate';
-			for (var old_parent_id in opts.relations) {
-				var parent_urn = opts.urn_map['urn:scalar:version:'+old_parent_id];
-				for (var rel_type in opts.relations[old_parent_id]) {
-					for (var j in opts.relations[old_parent_id][rel_type]) {
-						// Start a new post object here so values don't persist from one loop to the next
+			for (var old_parent_url in opts.relations) {
+				var parent_url = opts.url_map[old_parent_url];
+				var urn = parent_url.replace(opts.dest_url,'');
+				if ('/'==urn.substr(0,1)) urn = urn.substr(1);
+				console.log(old_parent_url + ' ' + parent_url + ' '+urn);
+				for (var rel_type in opts.relations[old_parent_url]) {
+					for (var j in opts.relations[old_parent_url][rel_type]) {
 						var post = {};
 						post['action'] = 'RELATE';
 						post['native'] = 'true';
 						post['id'] = opts.dest_id;
 						post['api_key'] = '';
 						post['scalar:fullname'] = '';
-						post['scalar:urn'] = parent_urn;
+						post['scalar:urn'] = urn;
 						post['scalar:child_rel'] = $.fn.rdfimporter('child_rel', rel_type);
 						// Write the relational values
 						relate_total++;
-						var old_child_id = opts.relations[old_parent_id][rel_type][j].child;
-						var old_child_url = opts.relations[old_parent_id][rel_type][j].url;
-						var child_urn = ('undefined'!=typeof(old_child_url)) ? opts.urn_map[old_child_url] : opts.urn_map['urn:scalar:version:'+old_child_id];
-						var hash = opts.relations[old_parent_id][rel_type][j].hash;
-						jQuery.extend(post, $.fn.rdfimporter('hash_to_post', hash));
+						var old_child_url = opts.relations[old_parent_url][rel_type][j].child;
+						var hash = opts.relations[old_parent_url][rel_type][j].hash;
+						var child_url = opts.url_map[old_child_url];
+						var child_urn = child_url.replace(opts.dest_url, '');
+						if ('/'==child_urn.substr(0,1)) child_urn = child_urn.substr(1);
 						post['scalar:child_urn'] = child_urn;
+						jQuery.extend(post, $.fn.rdfimporter('hash_to_post', hash));
 						$.post(url, post, function(relation_data){}).always(function(data) {
 							relate_count++;
 							var msg = '';
@@ -304,8 +355,11 @@
 					}
 				}
 			}
-			opts.urn_map = {}
+			console.log(opts);
+			/*
+			opts.url_map = {}
 			opts.relations = {};
+			*/
 		},
 		error : function(options) {
 			$progress_log = opts['$this'].find('#progress_log');
@@ -323,6 +377,7 @@
 			return null;
 		},
 		valid_scalar_rdf : function(rdf) {
+			return true;  // for now 
 			// Check RDF-JSON string to make sure it's styled in valid Scalar format
 			var content = 0;
 			var versions = 0;
@@ -377,15 +432,33 @@
 			}
 			return ret;
 		},
+		hash_to_rel_type : function(str) {
+			var rel_type = '';
+			if ('t'==str.substr(0,1)) rel_type = 'anno';
+			if ('line'==str.substr(0,4)) rel_type = 'anno';
+			if ('xywh'==str.substr(0,4)) rel_type = 'anno';
+			if ('datetime'==str.substr(0,8)) rel_type = 'reply';
+			if ('index'==str.substr(0,5)) rel_type = 'path';
+			if (!rel_type.length) rel_type = 'tag';
+			return rel_type;
+		},
 		source_url_from_rdf_fields : function(rdf) {
 			var source_url = '';
-			// Get URL from user node in Scalar-formatted RDF
 			for (var uri in rdf) {
+				// Get URL from user node in Scalar-formatted RDF
 				if (
 					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo']) && 
 					rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/users/') != -1
 				   ) {
 					var index = rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/users/');
+					source_url = rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.substr(0, index);
+					break;
+				// Get URL from user node in Mediathread-formatted RDF
+				} else if (
+					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo']) && 
+					rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/user/') != -1
+				) {
+					var index = rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/user/');
 					source_url = rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.substr(0, index);
 					break;
 				}
