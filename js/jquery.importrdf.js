@@ -288,6 +288,7 @@
 				            }							
 						};
 			});		
+			console.log(opts);
 			callback();
 		},
 		pages : function(options, callback) {
