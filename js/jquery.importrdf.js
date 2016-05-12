@@ -40,10 +40,12 @@
 				'scalar':'http://scalar.usc.edu/2012/01/scalar-ns#',
 				'exif':'http://ns.adobe.com/exif/1.0/',
 				'iptc':'http://ns.exiftool.ca/IPTC/IPTC/1.0/'
-			}
+			},
+			additional_formats: []
 	};
 
 	var opts = {};
+	if ('undefined'!=typeof($.csv)) defaults.additional_formats.push('csv');
 
 	var rdfimporter_methods = {
 			
@@ -104,18 +106,17 @@
 			});
 		},		
 		rdf : function(options, callback) {
-			// RDF-JSON string
+			// String
 			if ('undefined'!=typeof(options.rdf)) {
 				var rdf = options.rdf;
 				try {
-					rdf = JSON.parse(rdf);
-					$.fn.rdfimporter('valid_scalar_rdf',rdf);
+					rdf = $.fn.rdfimporter('format_to_json',rdf);
 				} catch (e) {	
 					callback({err:e});
 					return;
 				}
 				callback({rdf:rdf});
-			// URL to RDF-JSON
+			// URL to Scalar-formatted RDF-JSON
 			} else if ('undefined'!=typeof(options.url)) {
 				var url = options.url.replace(/\/$/, "")+'/rdf/instancesof/content?rec=1&ref=1&format=json&callback=?';
 			    $.getJSON( url, function(rdf) {
@@ -123,7 +124,7 @@
 			    }).fail(function() {
 			        callback({err:'Failed to get external RDF-JSON'});
 			    });
-			// File to RDF-JSON
+			// File
 			} else if ('undefined'!=typeof(options.file)) {
 				if (!options.file.files.length) {
 					callback({err:'No file selected'});
@@ -143,7 +144,7 @@
 					var rdf = reader.result;
 					try {
 						rdf = JSON.parse(rdf);
-						$.fn.rdfimporter('valid_scalar_rdf',rdf);
+						rdf = $.fn.rdfimporter('format_to_json',rdf);
 					} catch (e) {	
 						callback({err:e});
 						return;
@@ -158,6 +159,7 @@
 		queue : function(options, callback) {
 			if ('function'==typeof(options)) callback = options;
 			$.each(opts.rdf, function(key,value) {
+				if ('number'==typeof(key)) key = '_:'+key.toString();  // bnode
 				var entry_type = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'});
 				// Value is a relationship (oac:Annotation)
 				if ('http://www.openannotation.org/ns/Annotation' == entry_type) {
@@ -250,6 +252,7 @@
 					// Extrapolated page fields
 					var slug = key.replace(options.source_url,'');
 					if ('/'==slug.substr(0,1)) slug = slug.substr(1);
+					if ('_'==slug.substr(0,1)) slug = null;
 					opts.queue[key]['scalar:slug'] = slug;
 					opts.queue[key]['scalar:thumbnail'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#thumbnail'}), options.source_url);
 					opts.queue[key]['scalar:background'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#background'}), options.source_url);
@@ -270,6 +273,11 @@
 				        if ('undefined'!=typeof(opts.rdf[wasAttributedTo])) {
 				            opts.queue[key]['dcterms:creator'] = $.fn.rdfimporter('rdf_value',{rdf:opts.rdf[wasAttributedTo],p:'http://xmlns.com/foaf/0.1/name'});;
 				        }
+				    }
+				    var lat = $.fn.rdfimporter('rdf_value',{rdf:value,p:'latitude'});
+				    var lng = $.fn.rdfimporter('rdf_value',{rdf:value,p:'longitude'});
+				    if (null!==lat && null!==lng && 'undefined'==typeof(opts.queue[key]['dcterms:spatial'])) {
+				    	opts.queue[key]['dcterms:spatial'] = lat+','+lng;
 				    }
 				    // All other fields (including title, description, and additional metadata)
 				    var disallowed = ['art:url','scalar:defaultView'];  // Items covered earlier
@@ -317,6 +325,9 @@
 			var relate_count = 0;
 			var relate_total = 0;
 			var url = opts.dest_url+'/api/relate';
+			if ($.isEmptyObject(opts.relations)) {
+				callback({url:url,count:0,total:0,error:false}, '');	
+			}
 			for (var old_parent_url in opts.relations) {
 				var parent_url = opts.url_map[old_parent_url];
 				var urn = parent_url.replace(opts.dest_url,'');
@@ -364,6 +375,15 @@
 			if ($progress_log.is(':hidden')) $progress_log.fadeIn();
 			$progress_log.append(options.msg+"<br />");
 		},
+		uri : function(_pnode) {
+			for (var prefix in defaults.ontologies) {
+				var uri = defaults.ontologies[prefix];
+				if (_pnode.substr(0,prefix.length+1)==prefix+':') {
+					return _pnode.replace(prefix+':',uri);
+				}
+			}
+			return null;			
+		},
 		pnode : function(_uri) {
 			for (var prefix in defaults.ontologies) {
 				var uri = defaults.ontologies[prefix];
@@ -373,7 +393,28 @@
 			}
 			return null;
 		},
-		valid_scalar_rdf : function(rdf) {
+		format_to_json : function(rdf) {
+			// CSV
+			if (-1!=defaults.additional_formats.indexOf('csv')) {
+				try { var csv = $.csv.toObjects(rdf); } catch(err) {}
+				if ('undefined'!=typeof(csv)) {
+					var json = [];
+					for (var j = 0; j < csv.length; j++) {
+						for (var k in csv[j]) {
+							var uri = $.fn.rdfimporter('uri',k);
+							if (null === uri) uri = k;
+							if ('undefined'==typeof(json[j])) json[j] = {};
+							json[j][uri] = csv[j][k];
+						}
+					}
+					return json;
+				}
+			}
+			// JSON string
+			rdf = JSON.parse(rdf);
+			return rdf;
+		},
+		valid_json : function(rdf) {
 			return true;  // for now 
 			// Check RDF-JSON string to make sure it's styled in valid Scalar format
 			var content = 0;
@@ -482,8 +523,16 @@
 			var p = options.p;
 			if('undefined' == typeof(rdf[p]) || !rdf[p]) return null;
 			var values = [];
-			for (var j = 0; j < rdf[p].length; j++) {
-				values.push(rdf[p][j].value);
+			if ('string'==typeof(rdf[p])) {
+				values.push(rdf[p]);
+			} else {
+				for (var j = 0; j < rdf[p].length; j++) {
+					if ('string'==typeof(rdf[p][j])) {
+						values.push(rdf[p][j]);
+					} else {
+						values.push(rdf[p][j].value);
+					}
+				}
 			}
 			if (options.collapse) {
 				if (1==values.length) return values[0];
@@ -494,8 +543,14 @@
 			var rdf = options.rdf;
 			var p = options.p;
 			if('undefined' == typeof(rdf[p]) || !rdf[p]) return null;
-			var value = rdf[p][0].value;
-			return value;
+			if ('string'==typeof(rdf[p])) {
+				return rdf[p];
+			} else if ('string'==typeof(rdf[p][0])) {
+				return rdf[p][0];
+			} else if ('undefined'!=typeof(rdf[p][0].value)) {
+				return rdf[p][0].value;
+			}
+			return null;
 		},
 		abs_url : function(url, prefix) {
 			if (!url || !url.length) return url;

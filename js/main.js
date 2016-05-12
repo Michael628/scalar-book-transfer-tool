@@ -155,14 +155,14 @@ $(document).ready(function() {
 		var dest_url = getURLParameter('dest_url');
 		var dest_id = $form.find('.dest_id').val();
 		// Check the source RDF string
-		$source_msg.html('Validating source RDF ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
+		$source_msg.html('Validating source ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
 		$.fn.rdfimporter('rdf', {rdf:source_rdf}, function(obj) {
 			if ('undefined'!=typeof(obj.err)) {
-				var err = (obj.err.length) ? obj.err : 'Invalid RDF-JSON';
+				var err = (obj.err.length) ? obj.err : 'Invalid source';
 				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+err).parent().removeClass('alert-success').addClass('alert-danger');;
 				return;
 			}			
-			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Valid RDF-JSON');
+			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Source checks out');
 			$commitform.find('#source_url').val( $.fn.rdfimporter('source_url_from_rdf_fields', obj.rdf) );
 			$commitform.data('rdf', obj.rdf);
 			commit();
