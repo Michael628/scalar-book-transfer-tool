@@ -143,7 +143,6 @@
 				reader.onload = function(e) {
 					var rdf = reader.result;
 					try {
-						rdf = JSON.parse(rdf);
 						rdf = $.fn.rdfimporter('format_to_json',rdf);
 					} catch (e) {	
 						callback({err:e});
