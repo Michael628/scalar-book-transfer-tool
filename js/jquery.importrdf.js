@@ -39,7 +39,8 @@
 				'ov':'http://open.vocab.org/terms/',
 				'scalar':'http://scalar.usc.edu/2012/01/scalar-ns#',
 				'exif':'http://ns.adobe.com/exif/1.0/',
-				'iptc':'http://ns.exiftool.ca/IPTC/IPTC/1.0/'
+				'iptc':'http://ns.exiftool.ca/IPTC/IPTC/1.0/',
+				'bibo':'http://purl.org/ontology/bibo/'				
 			},
 			additional_formats: []
 	};
