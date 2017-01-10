@@ -152,7 +152,7 @@ $(document).ready(function() {
 		var $source_msg = $form.find('.source_msg');
 		var $dest_msg = $form.find('.dest_msg');
 		var source_rdf = $form.find('.source_rdf').val();
-		var dest_url = getURLParameter('dest_url');
+		var dest_url = $form.find('.dest_url').val();
 		var dest_id = $form.find('.dest_id').val();
 		// Check the source RDF string
 		$source_msg.html('Validating source ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
@@ -205,7 +205,7 @@ $(document).ready(function() {
 		$commitform.removeData('rdf');
 		var $source_msg = $form.find('.source_msg');
 		var $dest_msg = $form.find('.dest_msg');
-		var dest_url = getURLParameter('dest_url');
+		var dest_url = $form.find('.dest_url').val();
 		var dest_id = $form.find('.dest_id').val();
 		var source_file_obj = document.getElementById('fileUpload');
 		// Checking file and validating

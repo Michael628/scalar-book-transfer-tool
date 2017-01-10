@@ -287,7 +287,7 @@
 				        opts.queue[key][pnode] = $.fn.rdfimporter('rdf_values',{rdf:value,p:p,collapse:true});
 				    }
 				    // Replace relative URLs with absolute URLs in the content area
-				    if ('undefined'!=typeof(opts.queue[key]['sioc:content'])) {
+				    if (null!==opts.queue[key]['sioc:content'] && 'undefined'!=typeof(opts.queue[key]['sioc:content'])) {
 				        opts.queue[key]['sioc:content'] = opts.queue[key]['sioc:content'].replace(/(<(a|img)[^>]+(href|src)=")(?!http)([^"]+)/g, '$1'+options.source_url+'/$4');  // http://stackoverflow.com/questions/4882255/regular-expression-for-relative-links-only
 				    }							
 				};
