@@ -46,7 +46,8 @@
 	};
 
 	var opts = {};
-	if ('undefined'!=typeof($.csv)) defaults.additional_formats.push('csv');
+	//if ('undefined'!=typeof($.csv)) defaults.additional_formats.push('csv');
+	if ('undefined'!=typeof(Papa)) defaults.additional_formats.push('csv');
 
 	var rdfimporter_methods = {
 			
@@ -145,7 +146,7 @@
 					var rdf = reader.result;
 					try {
 						rdf = $.fn.rdfimporter('format_to_json',rdf);
-					} catch (e) {	
+					} catch (e) {
 						callback({err:e});
 						return;
 					}
@@ -396,14 +397,26 @@
 		format_to_json : function(rdf) {
 			// CSV
 			if (-1!=defaults.additional_formats.indexOf('csv')) {
-				try { var csv = $.csv.toObjects(rdf); } catch(err) {}
-				if ('undefined'!=typeof(csv)) {
+				// try { var csv = $.csv.toObjects(rdf); } catch(err) {alert(err)}
+				try {
+					var csv = Papa.parse(rdf);
+					csv = ('undefined'!=typeof(csv.errors[0]) && csv.errors[0].code.length) ? null : csv.data;
+				} catch(err) {
+					alert(err);
+				}
+				if ('undefined'!=typeof(csv) && null!=csv) {
 					var json = [];
+					var fields = [];
+					for (var j = 0; j < csv[0].length; j++) {
+						var uri = $.fn.rdfimporter('uri',csv[0][j]);
+						if (null === uri) uri = k;
+						fields.push(uri);
+					}
+					csv.shift();
 					for (var j = 0; j < csv.length; j++) {
-						for (var k in csv[j]) {
-							var uri = $.fn.rdfimporter('uri',k);
-							if (null === uri) uri = k;
+						for (var k = 0; k < csv[j].length; k++) {
 							if ('undefined'==typeof(json[j])) json[j] = {};
+							var uri = fields[k];
 							json[j][uri] = csv[j][k];
 						}
 					}

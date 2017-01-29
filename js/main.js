@@ -209,14 +209,14 @@ $(document).ready(function() {
 		var dest_id = $form.find('.dest_id').val();
 		var source_file_obj = document.getElementById('fileUpload');
 		// Checking file and validating
-		$source_msg.html('Reading &amp; validating source RDF ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
+		$source_msg.html('Reading &amp; validating source RDF or CSV ...').parent().removeClass('alert-danger').addClass('alert-success').fadeIn();
 		$.fn.rdfimporter('rdf', {file:source_file_obj}, function(obj) {
 			if ('undefined'!=typeof(obj.err)) {
-				var err = (obj.err.length) ? obj.err : 'Invalid RDF-JSON';
+				var err = (obj.err.length) ? obj.err : 'Invalid RDF-JSON or CSV';
 				$source_msg.html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> '+err).parent().removeClass('alert-success').addClass('alert-danger');
 				return;
 			}			
-			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Valid RDF-JSON');
+			$source_msg.html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Valid RDF-JSON or CSV');
 			$commitform.find('#source_url').val( $.fn.rdfimporter('source_url_from_rdf_fields', obj.rdf) );
 			$commitform.data('rdf', obj.rdf);
 			commit();
