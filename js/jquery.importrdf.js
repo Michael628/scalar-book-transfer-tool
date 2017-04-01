@@ -397,7 +397,6 @@
 		format_to_json : function(rdf) {
 			// CSV
 			if (-1!=defaults.additional_formats.indexOf('csv')) {
-				// try { var csv = $.csv.toObjects(rdf); } catch(err) {alert(err)}
 				try {
 					var csv = Papa.parse(rdf);
 					csv = ('undefined'!=typeof(csv.errors[0]) && csv.errors[0].code.length) ? null : csv.data;
@@ -417,7 +416,16 @@
 						for (var k = 0; k < csv[j].length; k++) {
 							if ('undefined'==typeof(json[j])) json[j] = {};
 							var uri = fields[k];
-							json[j][uri] = csv[j][k];
+							json[j][uri] = csv[j][k]; 
+						}
+					}
+					for (var j = 0; j < json.length; j++) {  // Transform specific predicates
+						if ('undefined'!=typeof(json[j]['http://purl.org/dc/terms/subject'])) {
+							var values = json[j]['http://purl.org/dc/terms/subject'].split(',');
+							for (var k = 0; k < values.length; k++) {
+								values[k] = values[k].trim();
+							}
+							json[j]['http://purl.org/dc/terms/subject'] = values.slice();
 						}
 					}
 					return json;
