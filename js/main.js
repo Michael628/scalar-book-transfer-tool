@@ -50,7 +50,7 @@ $(document).ready(function() {
 			$dest_id = $commitform.find('#dest_id').val();
 			$dest_urn = $commitform.find('#dest_urn').val();
 			$dest_url = $commitform.find('#dest_url').val().replace(/\/$/, "");
-			$modal.rdfimporter({rdf:$commitform.data('rdf'),source_url:$source_url,dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url}, function() {
+			$modal.rdfimporter({rdf:$commitform.data('rdf'),source_url:$source_url,dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url,check_for_existing_pages:false}, function() {
 				var $this = $modal.find('button[type="submit"]');
 				$this.removeAttr('disabled');
 				$this.button('finished');
