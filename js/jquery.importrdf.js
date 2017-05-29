@@ -279,7 +279,7 @@
 					opts.queue[key]['scalar:url'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'});
 					if (opts.check_for_existing_pages && opts.queue[key]['scalar:url']) {
 						for (var k = 0; k < opts.existing.length; k++) {
-							if (opts.existing[k].url != opts.queue[key]['scalar:url']) continue;
+							if (opts.existing[k].url.substr(opts.existing[k].url.indexOf('//')) != opts.queue[key]['scalar:url'].substr(opts.queue[key]['scalar:url'].indexOf('//'))) continue;  // Works with URLs with no protocol
 							opts.queue[key]['scalar:slug'] = opts.existing[k].slug;
 							opts.queue[key]['scalar:urn'] = opts.existing[k].urn;
 							opts.queue[key].action = 'UPDATE';
