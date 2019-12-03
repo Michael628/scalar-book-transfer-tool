@@ -18,10 +18,9 @@
  */  
 
 /**
- * @projectDescription  Transfer RDF-JSON from a source Scalar book to a destination book
+ * @projectDescription  Forked from Scalar's rdfimporter library, elaborates on combined page/version node import for Tensor; should some day be merged
  * @author				Craig Dietrich
- * @author				Michael Lynch
- * @version             1.2
+ * @version				1.1
  */
 
 (function($) {
@@ -31,16 +30,29 @@
 			relations: {},
 			url_map: {},
 			ontologies: {
-				'dc':'http://purl.org/dc/elements/1.1/',
-				'dcterms':'http://purl.org/dc/terms/',
-				'art':'http://simile.mit.edu/2003/10/ontologies/artstor#',
-				'sioc':'http://rdfs.org/sioc/ns#',
-				'sioctypes':'http://rdfs.org/sioc/types#',
-				'ov':'http://open.vocab.org/terms/',
-				'scalar':'http://scalar.usc.edu/2012/01/scalar-ns#',
-				'exif':'http://ns.adobe.com/exif/1.0/',
-				'iptc':'http://ns.exiftool.ca/IPTC/IPTC/1.0/',
-				'bibo':'http://purl.org/ontology/bibo/'		
+				'rdf'       : 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+				'rdfs'      : 'http://www.w3.org/2000/01/rdf-schema#',
+				'dc'        : 'http://purl.org/dc/elements/1.1/',
+				'dcterms'   : 'http://purl.org/dc/terms/',
+				'ctag'      : 'http://commontag.org/ns#',
+				'art'       : 'http://simile.mit.edu/2003/10/ontologies/artstor#',
+				'sioc'      : 'http://rdfs.org/sioc/ns#',
+				'sioctypes' : 'http://rdfs.org/sioc/types#',
+				'foaf'      : 'http://xmlns.com/foaf/0.1/',
+				'owl'       : 'http://www.w3.org/2002/07/owl#',
+				'ov'		: 'http://open.vocab.org/terms/',
+				'oac'		: 'http://www.openannotation.org/ns/',
+				'scalar'    : 'http://scalar.usc.edu/2012/01/scalar-ns#',
+				'shoah'		: 'http://tempuri.org/',
+				'prov'		: 'http://www.w3.org/ns/prov#',
+				'exif'		: 'http://ns.adobe.com/exif/1.0/',
+				'iptc'		: 'http://ns.exiftool.ca/IPTC/IPTC/1.0/',
+				'bibo'		: 'http://purl.org/ontology/bibo/',
+				'id3'		: 'http://id3.org/id3v2.4.0#',
+				'dwc'		: 'http://rs.tdwg.org/dwc/terms/',
+				'vra'		: 'http://purl.org/vra/',
+				'cp'		: 'http://scalar.cdla.oxycreates.org/commonplace/terms/',
+				'tk'		: 'http://localcontexts.org/tk/'  /* Temp */
 			},
 			additional_formats: [],
 			check_for_existing_pages: true,
@@ -48,7 +60,6 @@
 	};
 
 	var opts = {};
-	//if ('undefined'!=typeof($.csv)) defaults.additional_formats.push('csv');
 	if ('undefined'!=typeof(Papa)) defaults.additional_formats.push('csv');
 
 	var rdfimporter_methods = {
@@ -68,6 +79,8 @@
 			        	// Once queued, save pages (which includes media-pages)
 			        	$content_progress = $this.find('#content_progress'); 
 			        	$content_progress_text = $content_progress.find('span');
+			        	//console.log(opts);
+			        	//return;
 			        	$.fn.rdfimporter('pages', function(pagination, error_msg) {
 			        		var progress = ((pagination.count/pagination.total)*100)+'%';
 			        		$content_progress.css('width', progress);
@@ -215,8 +228,8 @@
 					opts.queue[key]['scalar:custom_scripts'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#customScript'});
 				// Value is a Scalar Version (scalar:Version)
 				} else if (entry_type !== null && entry_type.search(/Version/) !== -1) {
-				    // Use page url as key to the opts.queue by removing .# extension 
-				    var k = key.match(/^(.*)\.[0-9]*$/)[1];
+				    // Use page url as key to the opts.queue by removing .# extension if it exists
+				    var k = (-1!=key.indexOf('.') && key.lastIndexOf('.') > key.lastIndexOf('/')) ? key.match(/^(.*)\.[0-9]*$/)[1] : key.slice();
 				    // Init queue if doesn't exist
 				    if (opts.queue[k] === undefined) opts.queue[k] = {};
 				    // Extrapolated version fields
@@ -238,11 +251,25 @@
 				    if (references) {
 				        for (var j = 0; j < references.length; j++) {
 				        	if ('undefined'==typeof(opts.relations[k])) opts.relations[k] = {};
-				        	if ('undefined'==typeof(opts.relations[k]['reference'])) opts.relations[k]['reference'] = [];	
+				        	if ('undefined'==typeof(opts.relations[k]['reference'])) opts.relations[k]['reference'] = [];
 				        	opts.relations[k]['reference'].push({child:references[j],hash:''});
 				        }
 				    }
 				    delete opts.queue[k]['dcterms:references'];
+					var _entry_type = 'http://scalar.usc.edu/2012/01/scalar-ns#Composite';
+					if ( null!=$.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'}) ) {
+						_entry_type = 'http://scalar.usc.edu/2012/01/scalar-ns#Media';
+					}
+ 					opts.queue[k].action = 'ADD';
+					opts.queue[k].native = 'true';
+					opts.queue[k]['scalar:urn'] = '';
+					opts.queue[k].id = opts.dest_id;
+					opts.queue[k].api_key = '';
+					opts.queue[k]['scalar:child_urn'] = opts.dest_urn;
+					opts.queue[k]['scalar:child_type'] = 'http://scalar.usc.edu/2012/01/scalar-ns#Book';
+					opts.queue[k]['scalar:child_rel'] = 'page';
+					opts.queue[k]['urn:scalar:book'] = opts.dest_urn;
+					opts.queue[k]['rdf:type'] = _entry_type;
 				// Value is a combined page/version node
 				} else {
 					if (opts.queue[key] === undefined) opts.queue[key] = {};
@@ -283,7 +310,30 @@
 							opts.queue[key]['scalar:slug'] = opts.existing[k].slug;
 							opts.queue[key]['scalar:urn'] = opts.existing[k].urn;
 							opts.queue[key].action = 'UPDATE';
-						}
+							if ('undefined'!=typeof(opts.existing[k].referenced_by_urn) && opts.existing[k].referenced_by_urn.length) {
+								for (var m = 0; m < opts.existing[k].referenced_by_urn.length; m++) {
+									opts.url_map[ opts.existing[k].referenced_by_urn[m] ] = opts.existing[k].referenced_by_urn[m];
+									if ('undefined'==typeof(opts.relations[ opts.existing[k].referenced_by_urn[m] ])) opts.relations[ opts.existing[k].referenced_by_urn[m] ] = {};
+									if ('undefined'==typeof(opts.relations[ opts.existing[k].referenced_by_urn[m] ].reference)) opts.relations[ opts.existing[k].referenced_by_urn[m] ].reference = [];
+									opts.relations[ opts.existing[k].referenced_by_urn[m] ].reference.push( {child:opts.existing[k].urn, hash:''} );
+								};
+							};
+							if ('undefined'!=typeof(opts.existing[k].relationships_by_urn)) {
+								for (var rel in opts.existing[k].relationships_by_urn) {
+									if (-1 != rel.indexOf('_by')) {
+										var rel_type = rel.replace('_by', '');
+										for (var m = 0; m < opts.existing[k].relationships_by_urn[rel].length; m++) {
+											opts.url_map[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ] = opts.existing[k].relationships_by_urn[rel][m]['urn'];
+											if ('undefined'==typeof(opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ])) opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ] = {};
+											if ('undefined'==typeof(opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ][rel_type])) opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ][rel_type] = [];
+											opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ][rel_type].push( {child:opts.existing[k].urn, hash:opts.existing[k].relationships_by_urn[rel][m]['hash']} );
+										};										
+									} else if (-1 != rel.indexOf('_of')) {
+										// TODO
+									};
+								};
+							};
+						};
 					};
 					// Extrapolated version fields
 				    opts.queue[key]['scalar:default_view'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#defaultView'});
@@ -316,7 +366,7 @@
 				        opts.queue[key]['sioc:content'] = opts.queue[key]['sioc:content'].replace(/(<(a|img)[^>]+(href|src)=")(?!http)([^"]+)/g, '$1'+options.source_url+'/$4');  // http://stackoverflow.com/questions/4882255/regular-expression-for-relative-links-only
 				    }							
 				};
-			});		
+			});
 			console.log(opts);
 			callback();
 		},
@@ -325,13 +375,18 @@
 			var page_count = 0;
 			var page_total = 0;
 			$.each(opts.queue,function(key,value) {
+				console.log(value);
 				page_total++;
 				var url = opts.dest_url+'/api/'+value.action.toLowerCase();
 				$.post(url, value, function(page_data) {
 					if ('object'!=typeof(page_data)) return;
 					$.each(page_data, function(k,v) {
 						if ('/'==k.substr(k.length-1, 1)) k = k.substr(0, k.length-1);
-						opts.url_map[key] = k.match(/^(.*)\.[0-9]*$/)[1];
+						if ('UPDATE'==value.action) {
+							opts.url_map[value['scalar:urn']] = v['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value;
+						} else {
+							opts.url_map[key] = k.match(/^(.*)\.[0-9]*$/)[1];
+						}
 					});
 				}).always(function(err) {
 					page_count++;
@@ -362,6 +417,7 @@
 				console.log(old_parent_url + ' ' + parent_url + ' '+urn);
 				for (var rel_type in opts.relations[old_parent_url]) {
 					for (var j in opts.relations[old_parent_url][rel_type]) {
+						if ('object' != typeof(opts.relations[old_parent_url][rel_type][j])) continue;
 						var post = {};
 						post['action'] = 'RELATE';
 						post['native'] = 'true';
@@ -371,10 +427,14 @@
 						post['scalar:urn'] = urn;
 						post['scalar:child_rel'] = $.fn.rdfimporter('child_rel', rel_type);
 						// Write the relational values
-						relate_total++;
 						var old_child_url = opts.relations[old_parent_url][rel_type][j].child;
 						var hash = opts.relations[old_parent_url][rel_type][j].hash;
 						var child_url = opts.url_map[old_child_url];
+						if ('undefined' == typeof(child_url)) {
+							console.log("Couldn't find child_url for: " + old_child_url);
+							continue;
+						}
+						relate_total++;
 						var child_urn = child_url.replace(opts.dest_url, '');
 						if ('/'==child_urn.substr(0,1)) child_urn = child_urn.substr(1);
 						post['scalar:child_urn'] = child_urn;
@@ -390,7 +450,6 @@
 					}
 				}
 			}
-			console.log(opts);
 			/*
 			opts.url_map = {}
 			opts.relations = {};
@@ -398,19 +457,56 @@
 		},
 		existing : function(options, callback) {
 			if ('function'==typeof(options)) callback = options;
-			var url = opts.dest_url+'/rdf/instancesof/media?format=json&callback=?';  // Only check URL field, for now
+			var url = opts.dest_url+'/rdf/instancesof/media?format=json&ref=1&rec=1&callback=?';  // Only check URL field, for now
 			opts.existing = [];
+			$('#existing_progress').fadeIn();
+			$('<img src="'+$('link#base_url').attr('href')+'system/application/views/images/loading_dots.gif" />').appendTo($('#existing_progress > div'));
 			$.getJSON(url, function(json) {
 				for (var uri in json) {
 					if ('undefined'==typeof(json[uri]['http://simile.mit.edu/2003/10/ontologies/artstor#url'])) continue;
-					opts.existing.push({
+					var obj = {
 						slug:json[uri]['http://purl.org/dc/terms/isVersionOf'][0].value.replace(opts.dest_url+'/',''),
 						uri:json[uri]['http://purl.org/dc/terms/isVersionOf'][0].value,
 						url:json[uri]['http://simile.mit.edu/2003/10/ontologies/artstor#url'][0].value,
 						title:json[uri]['http://purl.org/dc/terms/title'][0].value,
 						urn:json[uri]['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value
-					});
+					};
+					if ('undefined'!=typeof(json[uri]['http://purl.org/dc/terms/isReferencedBy'])) {
+						obj.referenced_by_urn = [];
+						for (var j = 0; j < json[uri]['http://purl.org/dc/terms/isReferencedBy'].length; j++) {
+							var content_item = json[ json[uri]['http://purl.org/dc/terms/isReferencedBy'][0].value ];
+							var version_item = json[ content_item['http://purl.org/dc/terms/hasVersion'][0].value ];
+							obj.referenced_by_urn.push( version_item['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value );
+						};
+					};
+					for (var rel_uri in json) {
+						if ('undefined'==typeof(json[rel_uri]['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'])) continue;
+						if ('http://www.openannotation.org/ns/Annotation'!=json[rel_uri]['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'][0].value) continue;
+						var body = json[rel_uri]['http://www.openannotation.org/ns/hasBody'][0].value;
+						var target = json[rel_uri]['http://www.openannotation.org/ns/hasTarget'][0].value;
+						var rel_type = '';
+						var hash = '';
+						if (-1 == target.indexOf('#')) {
+							rel_type = 'tag';
+						} else {
+							var hash = target.substr(target.indexOf('#')+1);
+							rel_type = $.fn.rdfimporter('hash_to_rel_type', hash);
+							target = target.substr(0, target.indexOf('#'));
+						};
+						if (uri == target.substr(0, uri.length)) {  // has a parent
+							rel_type += '_by';
+							if ('undefined' == typeof(obj.relationships_by_urn)) obj.relationships_by_urn = {};
+							if ('undefined' == typeof(obj.relationships_by_urn[rel_type])) obj.relationships_by_urn[rel_type] = [];
+							var version_item = json[ body ];
+							obj.relationships_by_urn[rel_type].push({urn:version_item['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value,hash:hash});
+						} else if (rel_uri == body) {  // has a child
+							rel_type += '_of';
+							// TODO
+						};
+					};
+					opts.existing.push(obj);
 				};
+				if ($('#existing_progress').is(':visible')) $('#existing_progress').fadeOut().find('img').remove();
 				callback();
 			});
 		},

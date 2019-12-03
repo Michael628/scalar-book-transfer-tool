@@ -16,6 +16,7 @@ body > .container-fluid { padding: 0; }
 .progress-bar {text-align:left;}
 .progress-bar span {padding-left:5px;}
 .complete_msg {display:none;}
+#commit .modal-footer {position:relative;}
 
 .scalar-logo {
 	background-image:url(images/scalar-logo.png); background-repeat:no-repeat; width:20px; height:18px;
@@ -54,3 +55,6 @@ body > .container-fluid { padding: 0; }
   background-color: white !important;
   cursor: text !important;
 }
+
+#existing_progress {background-color:#ffffff; text-align:left; position:absolute; left:30px; top:12px; width:60%; display:none;}
+#existing_progress img {display:none;}
