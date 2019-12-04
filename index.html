@@ -14,13 +14,13 @@
 <div class="container-fluid">
 	<div class="row">
 		<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-			<button class="btn btn-warning btn-beta-notes" data-toggle="modal" data-target="#betaNotes">Important notes</button>
         	<div role="tabpanel" data-example-id="togglable-tabs" id="wrapper">
         		<!-- Tabs -->
 				<ul id="myTab" class="nav nav-tabs" role="tablist">
               		<li role="presentation" class="active"><a href="#url" id="url-tab" role="tab" data-toggle="tab" aria-controls="url" aria-expanded="true">Book URL</a></li>
               		<li role="presentation"><a href="#rdf" role="tab" id="rdf-tab" data-toggle="tab" aria-controls="rdf">Paste Text</a></li>
               		<li role="presentation"><a href="#file" role="tab" id="file-tab" data-toggle="tab" aria-controls="rdf">Upload File</a></li>
+              		<li role="presentation"><a href="javascript:$(this).blur();" class="text-warning" data-toggle="modal" data-target="#betaNotes">Important notes</a></li>
             	</ul>
             	<div id="tabContent" class="tab-content">
             		<!-- Import by URL -->
@@ -220,18 +220,24 @@
         <h3 class="modal-title" id="myModalLabel">Important notes about the import tool</h3>
       </div>
       <div class="modal-body">
-        <p><strong>This tool is presently in beta. We appreciate your patience as we add features. &mdash; The Scalar Team</strong></p>
-        <p>The following fields and properties are not currently transferred by the import tool:</p>
+        <h4>Data sources</h4>
+        <p>
+        	<ul>
+        	<li><b>Another Scalar book</b>: The import tool assumes that this kind of import will be occuring into a fresh (new) destination Scalar book, therefore pages or relationships that might exist in the destination book are not checked for possible updating and persistence, respectively.</li>
+        	<li><b>A CSV file with text pages</b>: If the CSV file contains a column for main text content (sioc:content), then the import tool will <i>not</i> check to see if that page already exists in the destination Scalar book, because there isn't enough information to inform matches between existing and new pages.</li>
+        	<li><b>A CSV File with media pages:</b> If the CSV file contains a column for media file URL (art:url), then the import tool will check to see if an existing media-page exists in the destination Scalar book, based on a match of the URL field. If there is a match, the existing page's relationships will be preserved.</li>
+        	</ul>
+        </p>
         <h4>Book</h4>
         <p>
         	<ul>
-        	<li><b>Book properties</b>: No attributes of the source are transfered to the destination.</li>
+        	<li><b>Book properties</b>: No attributes of the source book are transfered to the destination, because exports of Scalar books do not contain book information but rather page and relationship information.</li>
         	</ul>
         </p>
         <h4>Pages</h4>
         <p>
         	<ul>
-        	<li><b>The following <i>Metadata</i> attribute isn't presently transfered</b>: Page visibility.</li>
+        	<li><b>The following attribute isn't presently transfered</b>: Page visibility, because hidden items are ignored.</li>
         	<li><b>Thumbnails &amp; Background image &amp; Background audio</b>: These fields can link to media uploaded directly to a source book, which can cause problems should the source book be deleted (more below in Media section).</li>
         	</ul>
         </p>        
