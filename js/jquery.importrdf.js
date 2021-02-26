@@ -243,7 +243,7 @@
 				    	opts.queue[k][pnode] = $.fn.rdfimporter('rdf_values',{rdf:value,p:p,collapse:true});
 				    }
 				    // Replace relative URLs with absolute URLs in the content area
-				    if ('undefined'!=typeof(opts.queue[k]['sioc:content'])) {
+				    if ('undefined'!=typeof(opts.queue[k]['sioc:content']) && opts.queue[k]['sioc:content']) {
 				       	opts.queue[k]['sioc:content'] = opts.queue[k]['sioc:content'].replace(/(<(a|img)[^>]+(href|src)=")(?!http)([^"]+)/g, '$1'+options.source_url+'/$4');  // http://stackoverflow.com/questions/4882255/regular-expression-for-relative-links-only
 				    }
 				    // Reference relations
@@ -256,6 +256,7 @@
 				        }
 				    }
 				    delete opts.queue[k]['dcterms:references'];
+				    // TODO: lens relations
 					var _entry_type = 'http://scalar.usc.edu/2012/01/scalar-ns#Composite';
 					if ( null!=$.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'}) ) {
 						_entry_type = 'http://scalar.usc.edu/2012/01/scalar-ns#Media';
@@ -289,8 +290,10 @@
 					opts.queue[key]['scalar:child_rel'] = 'page';
 					opts.queue[key]['urn:scalar:book'] = opts.dest_urn;
 					opts.queue[key]['rdf:type'] = _entry_type;
-					// Special considerations for the slug field
-					if (options.source_url && options.source_url.length) {
+					// Slug
+					if ($.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#slug'})) {
+						opts.queue[key]['scalar:slug'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#slug'});
+					} else if (options.source_url && options.source_url.length) {
 						var slug = key.replace(options.source_url,'');
 						if ('/'==slug.substr(0,1)) slug = slug.substr(1);
 						if ('_'==slug.substr(0,1)) slug = null;
@@ -302,11 +305,16 @@
 					opts.queue[key]['scalar:audio'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#audio'}), options.source_url);
 					opts.queue[key]['scalar:banner'] = $.fn.rdfimporter('abs_url', $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#banner'}), options.source_url);
 					if (key.search(/term/i) !== -1) opts.queue[key]['scalar:category'] = 'term';
-				    // Special considerations for the URL field
 					opts.queue[key]['scalar:url'] = $.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'});
-					if (opts.check_for_existing_pages && opts.queue[key]['scalar:url']) {
-						for (var k = 0; k < opts.existing.length; k++) {
-							if (opts.existing[k].url.substr(opts.existing[k].url.indexOf('//')) != opts.queue[key]['scalar:url'].substr(opts.queue[key]['scalar:url'].indexOf('//'))) continue;  // Works with URLs with no protocol
+				    // If check for existing pages is turned on, UPDATE rather than ADD if it exists
+					if (opts.check_for_existing_pages) {
+						for (var k = 0; k < opts.existing.length; k++) {	
+							var pass = false;
+							// URL is the same
+							if ('undefined' != typeof(opts.queue[key]['scalar:url']) && opts.queue[key]['scalar:url'] &&  opts.existing[k].url.substr(opts.existing[k].url.indexOf('//')) == opts.queue[key]['scalar:url'].substr(opts.queue[key]['scalar:url'].indexOf('//'))) pass = true;
+							// Slug is the same
+							if ('undefined' != typeof(opts.queue[key]['scalar:slug']) && opts.queue[key]['scalar:slug'] && opts.existing[k].slug == opts.queue[key]['scalar:slug']) pass = true;
+							if (!pass) continue;
 							opts.queue[key]['scalar:slug'] = opts.existing[k].slug;
 							opts.queue[key]['scalar:urn'] = opts.existing[k].urn;
 							opts.queue[key].action = 'UPDATE';
@@ -317,6 +325,19 @@
 									if ('undefined'==typeof(opts.relations[ opts.existing[k].referenced_by_urn[m] ].reference)) opts.relations[ opts.existing[k].referenced_by_urn[m] ].reference = [];
 									opts.relations[ opts.existing[k].referenced_by_urn[m] ].reference.push( {child:opts.existing[k].urn, hash:''} );
 								};
+							};
+							if ('undefined'!=typeof(opts.existing[k].reference_of_urn) && opts.existing[k].reference_of_urn.length) {
+								for (var m = 0; m < opts.existing[k].reference_of_urn.length; m++) {
+									opts.url_map[ opts.existing[k].reference_of_urn[m] ] = opts.existing[k].reference_of_urn[m];
+									if ('undefined'==typeof(opts.relations[ opts.existing[k].reference_of_urn[m] ])) opts.relations[ opts.existing[k].reference_of_urn[m] ] = {};
+									if ('undefined'==typeof(opts.relations[ opts.existing[k].reference_of_urn[m] ].reference)) opts.relations[ opts.existing[k].reference_of_urn[m] ].reference = [];
+									opts.relations[ opts.existing[k].reference_of_urn[m] ].reference.push( {child:opts.existing[k].urn, hash:''} );
+								};
+							};
+							if ('undefined'!=typeof(opts.existing[k].lens_of) && opts.existing[k].lens_of.length) {
+								opts.url_map[ opts.existing[k].urn ] = opts.existing[k].urn;
+								if ('undefined'==typeof(opts.relations[ opts.existing[k].urn ])) opts.relations[ opts.existing[k].urn ] = {};
+								opts.relations[ opts.existing[k].urn ].lens = [{child:'',hash:'',lens:opts.existing[k].lens_of}];
 							};
 							if ('undefined'!=typeof(opts.existing[k].relationships_by_urn)) {
 								for (var rel in opts.existing[k].relationships_by_urn) {
@@ -329,7 +350,13 @@
 											opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ][rel_type].push( {child:opts.existing[k].urn, hash:opts.existing[k].relationships_by_urn[rel][m]['hash']} );
 										};										
 									} else if (-1 != rel.indexOf('_of')) {
-										// TODO
+										var rel_type = rel.replace('_of', '');
+										for (var m = 0; m < opts.existing[k].relationships_by_urn[rel].length; m++) {
+											opts.url_map[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ] = opts.existing[k].relationships_by_urn[rel][m]['urn'];
+											if ('undefined'==typeof(opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ])) opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ] = {};
+											if ('undefined'==typeof(opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ][rel_type])) opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ][rel_type] = [];
+											opts.relations[ opts.existing[k].relationships_by_urn[rel][m]['urn'] ][rel_type].push( {child:opts.existing[k].urn, hash:opts.existing[k].relationships_by_urn[rel][m]['hash']} );
+										};	
 									};
 								};
 							};
@@ -355,7 +382,7 @@
 				    	opts.queue[key]['dcterms:spatial'] = lat+','+lng;
 				    }
 				    // All other fields (including title, description, and additional metadata)
-				    var disallowed = ['art:url','scalar:defaultView'];  // Items covered earlier
+				    var disallowed = ['art:url','scalar:defaultView','scalar:urn','scalar:author','scalar:baseType','cp:url'];
 				    for (var p in value) {
 				        var pnode = $.fn.rdfimporter('pnode',p);
 				        if (null==pnode || -1!=disallowed.indexOf(pnode)) continue;
@@ -427,18 +454,18 @@
 						post['scalar:urn'] = urn;
 						post['scalar:child_rel'] = $.fn.rdfimporter('child_rel', rel_type);
 						// Write the relational values
-						var old_child_url = opts.relations[old_parent_url][rel_type][j].child;
-						var hash = opts.relations[old_parent_url][rel_type][j].hash;
+						var hash = ('undefined'!=typeof(opts.relations[old_parent_url][rel_type][j].hash)) ? opts.relations[old_parent_url][rel_type][j].hash : '';
+						jQuery.extend(post, $.fn.rdfimporter('hash_to_post', hash));
+						var lens = ('undefined'!=typeof(opts.relations[old_parent_url][rel_type][j].lens)) ? opts.relations[old_parent_url][rel_type][j].lens : '';
+						if (lens.length) post['scalar:contents'] = lens;
+						var old_child_url = ('undefined'!=typeof(opts.relations[old_parent_url][rel_type][j].child)) ? opts.relations[old_parent_url][rel_type][j].child : '';
 						var child_url = opts.url_map[old_child_url];
-						if ('undefined' == typeof(child_url)) {
-							console.log("Couldn't find child_url for: " + old_child_url);
-							continue;
+						if ('undefined' != typeof(child_url)) {
+							var child_urn = child_url.replace(opts.dest_url, '');
+							if ('/'==child_urn.substr(0,1)) child_urn = child_urn.substr(1);
+							post['scalar:child_urn'] = child_urn;
 						}
 						relate_total++;
-						var child_urn = child_url.replace(opts.dest_url, '');
-						if ('/'==child_urn.substr(0,1)) child_urn = child_urn.substr(1);
-						post['scalar:child_urn'] = child_urn;
-						jQuery.extend(post, $.fn.rdfimporter('hash_to_post', hash));
 						$.post(url, post, function(relation_data){}).always(function(data) {
 							relate_count++;
 							var msg = '';
@@ -457,27 +484,39 @@
 		},
 		existing : function(options, callback) {
 			if ('function'==typeof(options)) callback = options;
-			var url = opts.dest_url+'/rdf/instancesof/media?format=json&ref=1&rec=1&callback=?';  // Only check URL field, for now
+			var url = opts.dest_url+'/rdf/instancesof/content?format=json&ref=1&rec=1&meta=0&callback=?';
 			opts.existing = [];
 			$('#existing_progress').fadeIn();
-			$('<img src="'+$('link#base_url').attr('href')+'system/application/views/images/loading_dots.gif" />').appendTo($('#existing_progress > div'));
+			if ($('link#base_url').length) $('<img src="'+$('link#base_url').attr('href')+'system/application/views/images/loading_dots.gif" />').appendTo($('#existing_progress > div'));
 			$.getJSON(url, function(json) {
 				for (var uri in json) {
-					if ('undefined'==typeof(json[uri]['http://simile.mit.edu/2003/10/ontologies/artstor#url'])) continue;
+					if ('undefined' == typeof(json[uri]['http://purl.org/dc/terms/isVersionOf'])) continue;
 					var obj = {
 						slug:json[uri]['http://purl.org/dc/terms/isVersionOf'][0].value.replace(opts.dest_url+'/',''),
 						uri:json[uri]['http://purl.org/dc/terms/isVersionOf'][0].value,
-						url:json[uri]['http://simile.mit.edu/2003/10/ontologies/artstor#url'][0].value,
+						urn:json[uri]['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value,
+						url:('undefined'!=typeof(json[uri]['http://simile.mit.edu/2003/10/ontologies/artstor#url'])) ? json[uri]['http://simile.mit.edu/2003/10/ontologies/artstor#url'][0].value : '',
 						title:json[uri]['http://purl.org/dc/terms/title'][0].value,
 						urn:json[uri]['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value
 					};
 					if ('undefined'!=typeof(json[uri]['http://purl.org/dc/terms/isReferencedBy'])) {
 						obj.referenced_by_urn = [];
 						for (var j = 0; j < json[uri]['http://purl.org/dc/terms/isReferencedBy'].length; j++) {
-							var content_item = json[ json[uri]['http://purl.org/dc/terms/isReferencedBy'][0].value ];
+							var content_item = json[ json[uri]['http://purl.org/dc/terms/isReferencedBy'][j].value ];
 							var version_item = json[ content_item['http://purl.org/dc/terms/hasVersion'][0].value ];
 							obj.referenced_by_urn.push( version_item['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value );
 						};
+					};
+					if ('undefined'!=typeof(json[uri]['http://purl.org/dc/terms/isReferenceOf'])) {
+						obj.reference_of_urn = [];
+						for (var j = 0; j < json[uri]['http://purl.org/dc/terms/isReferenceOf'].length; j++) {
+							var content_item = json[ json[uri]['http://purl.org/dc/terms/isReferenceOf'][j].value ];
+							var version_item = json[ content_item['http://purl.org/dc/terms/hasVersion'][0].value ];
+							obj.referenced_by_urn.push( version_item['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value );
+						};
+					};
+					if ('undefined'!=typeof(json[uri]['http://scalar.usc.edu/2012/01/scalar-ns#isLensOf'])) {
+						obj.lens_of = json[uri]['http://scalar.usc.edu/2012/01/scalar-ns#isLensOf'][0].value;
 					};
 					for (var rel_uri in json) {
 						if ('undefined'==typeof(json[rel_uri]['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'])) continue;
@@ -647,6 +686,8 @@
 				// Get URL from user node in Scalar-formatted RDF
 				if (
 					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo']) && 
+					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0]) && 
+					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value) && 
 					rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/users/') != -1
 				   ) {
 					var index = rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/users/');
@@ -655,6 +696,8 @@
 				// Get URL from user node in Mediathread-formatted RDF
 				} else if (
 					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo']) && 
+					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0]) && 
+					'undefined'!=typeof(rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value) && 
 					rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/user/') != -1
 				) {
 					var index = rdf[uri]['http://www.w3.org/ns/prov#wasAttributedTo'][0].value.indexOf('/user/');
@@ -675,7 +718,9 @@
 				case 'tag':
 					return 'tagged';
 				case 'reference':
-					return 'referenced';					
+					return 'referenced';			
+				case 'lens':
+					return 'grouped';
 			}
 			return '';
 		},
