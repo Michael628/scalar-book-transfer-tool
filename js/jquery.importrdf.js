@@ -256,7 +256,16 @@
 				        }
 				    }
 				    delete opts.queue[k]['dcterms:references'];
-				    // TODO: lens relations
+				    // Lens relations
+				    var lenses = $.fn.rdfimporter('rdf_values',{rdf:value,p:'http://scalar.usc.edu/2012/01/scalar-ns#isLensOf'});
+				    if (lenses) {
+				        for (var j = 0; j < lenses.length; j++) {
+				        	if ('undefined'==typeof(opts.relations[k])) opts.relations[k] = {};
+				        	if ('undefined'==typeof(opts.relations[k]['lens'])) opts.relations[k]['lens'] = [];
+				        	opts.relations[k]['lens'].push({child:'',hash:'',lens:lenses[j]});
+				        }
+				    }
+				    // Save fields
 					var _entry_type = 'http://scalar.usc.edu/2012/01/scalar-ns#Composite';
 					if ( null!=$.fn.rdfimporter('rdf_value',{rdf:value,p:'http://simile.mit.edu/2003/10/ontologies/artstor#url'}) ) {
 						_entry_type = 'http://scalar.usc.edu/2012/01/scalar-ns#Media';
