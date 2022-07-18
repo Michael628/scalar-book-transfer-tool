@@ -495,6 +495,7 @@
 			if ('function'==typeof(options)) callback = options;
 			var url = opts.dest_url+'/rdf/instancesof/content?format=json&ref=1&rec=1&meta=0&callback=?';
 			opts.existing = [];
+			$('#existing_question').hide();
 			$('#existing_progress').fadeIn();
 			if ($('link#base_url').length) $('<img src="'+$('link#base_url').attr('href')+'system/application/views/images/loading_dots.gif" />').appendTo($('#existing_progress > div'));
 			$.getJSON(url, function(json) {
@@ -554,7 +555,9 @@
 					};
 					opts.existing.push(obj);
 				};
-				if ($('#existing_progress').is(':visible')) $('#existing_progress').fadeOut().find('img').remove();
+				if ($('#existing_progress').is(':visible')) {
+					$('#existing_progress').fadeOut().find('img').remove();
+				}
 				callback();
 			});
 		},

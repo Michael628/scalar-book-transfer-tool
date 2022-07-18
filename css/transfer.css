@@ -56,5 +56,7 @@ body > .container-fluid { padding: 0; }
   cursor: text !important;
 }
 
+#existing_question {background-color:#ffffff; text-align:left; position:absolute; left:30px; top:21px; width:60%;}
+#existing_question label {font-weight:normal; cursor:pointer;}
 #existing_progress {background-color:#ffffff; text-align:left; position:absolute; left:30px; top:12px; width:60%; display:none;}
 #existing_progress img {display:none;}

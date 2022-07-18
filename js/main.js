@@ -50,7 +50,8 @@ $(document).ready(function() {
 			$dest_id = $commitform.find('#dest_id').val();
 			$dest_urn = $commitform.find('#dest_urn').val();
 			$dest_url = $commitform.find('#dest_url').val().replace(/\/$/, "");
-			$modal.rdfimporter({rdf:$commitform.data('rdf'),source_url:$source_url,dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url,check_for_existing_pages:true}, function() {
+			var check_for_existing = ($('input[name="get_existing"]').is(':checked')) ? true : false;
+			$modal.rdfimporter({rdf:$commitform.data('rdf'),source_url:$source_url,dest_urn:$dest_urn,dest_id:$dest_id,dest_url:$dest_url,check_for_existing_pages:check_for_existing}, function() {
 				var $this = $modal.find('button[type="submit"]');
 				$this.removeAttr('disabled');
 				$this.button('finished');
@@ -59,12 +60,13 @@ $(document).ready(function() {
 					$this.unbind('click');
 					$this.button('reset');
 					$modal.find('#content_progress, #relations_progress').css('width', '0%').find('span').text('');
+					$('#existing_question').show();
 					$modal.modal('hide');
 				});
 				$('#urlform button[type="submit"], #rdfform button[type="submit"], #fileform button[type="submit"]').hide().prev().show().find('a').click(function() {
 					$('#urlform button[type="submit"], #rdfform button[type="submit"], #fileform button[type="submit"]').show().prev().hide();
 					$('.source_msg, .dest_msg').empty().parent().hide();
-				});				
+				});
 				commit.active = 0;
 			});
 		});
