@@ -672,6 +672,12 @@
 					case 'xywh':
 						ret['scalar:points'] = fields[field];
 						break;
+					case 'pos3d':
+						ret['scalar:position_3d'] = fields[field];
+						break;
+					case 'posgis':
+						ret['scalar:position_gis'] = fields[field];
+						break;
 					case 'datetime':
 						ret['scalar:datetime'] = fields[field];
 						break;
@@ -687,6 +693,8 @@
 			if ('t'==str.substr(0,1)) rel_type = 'anno';
 			if ('line'==str.substr(0,4)) rel_type = 'anno';
 			if ('xywh'==str.substr(0,4)) rel_type = 'anno';
+			if ('pos3d'==str.substr(0,5)) rel_type = 'anno';
+			if ('posgis'==str.substr(0,5)) rel_type = 'anno';
 			if ('datetime'==str.substr(0,8)) rel_type = 'reply';
 			if ('index'==str.substr(0,5)) rel_type = 'path';
 			if (!rel_type.length) rel_type = 'tag';
