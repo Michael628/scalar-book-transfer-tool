@@ -517,12 +517,12 @@
 							obj.referenced_by_urn.push( version_item['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value );
 						};
 					};
-					if ('undefined'!=typeof(json[uri]['http://purl.org/dc/terms/isReferenceOf'])) {
+					if ('undefined'!=typeof(json[uri]['http://purl.org/dc/terms/references'])) {
 						obj.reference_of_urn = [];
-						for (var j = 0; j < json[uri]['http://purl.org/dc/terms/isReferenceOf'].length; j++) {
-							var content_item = json[ json[uri]['http://purl.org/dc/terms/isReferenceOf'][j].value ];
+						for (var j = 0; j < json[uri]['http://purl.org/dc/terms/references'].length; j++) {
+							var content_item = json[ json[uri]['http://purl.org/dc/terms/references'][j].value ];
 							var version_item = json[ content_item['http://purl.org/dc/terms/hasVersion'][0].value ];
-							obj.referenced_by_urn.push( version_item['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value );
+							obj.reference_of_urn.push( version_item['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value );
 						};
 					};
 					if ('undefined'!=typeof(json[uri]['http://scalar.usc.edu/2012/01/scalar-ns#isLensOf'])) {
