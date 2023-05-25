@@ -337,10 +337,10 @@
 							};
 							if ('undefined'!=typeof(opts.existing[k].reference_of_urn) && opts.existing[k].reference_of_urn.length) {
 								for (var m = 0; m < opts.existing[k].reference_of_urn.length; m++) {
-									opts.url_map[ opts.existing[k].reference_of_urn[m] ] = opts.existing[k].reference_of_urn[m];
-									if ('undefined'==typeof(opts.relations[ opts.existing[k].reference_of_urn[m] ])) opts.relations[ opts.existing[k].reference_of_urn[m] ] = {};
-									if ('undefined'==typeof(opts.relations[ opts.existing[k].reference_of_urn[m] ].reference)) opts.relations[ opts.existing[k].reference_of_urn[m] ].reference = [];
-									opts.relations[ opts.existing[k].reference_of_urn[m] ].reference.push( {child:opts.existing[k].urn, hash:''} );
+									opts.url_map[ opts.existing[k].urn ] = opts.existing[k].urn;
+									if ('undefined'==typeof(opts.relations[ opts.existing[k].urn ])) opts.relations[ opts.existing[k].urn ] = {};
+									if ('undefined'==typeof(opts.relations[ opts.existing[k].urn ].reference)) opts.relations[ opts.existing[k].urn ].reference = [];
+									opts.relations[ opts.existing[k].urn ].reference.push( {child:opts.existing[k].reference_of_urn[m], hash:''} );
 								};
 							};
 							if ('undefined'!=typeof(opts.existing[k].lens_of) && opts.existing[k].lens_of.length) {
@@ -469,11 +469,10 @@
 						if (lens.length) post['scalar:contents'] = lens;
 						var old_child_url = ('undefined'!=typeof(opts.relations[old_parent_url][rel_type][j].child)) ? opts.relations[old_parent_url][rel_type][j].child : '';
 						var child_url = opts.url_map[old_child_url];
-						if ('undefined' != typeof(child_url)) {
-							var child_urn = child_url.replace(opts.dest_url, '');
-							if ('/'==child_urn.substr(0,1)) child_urn = child_urn.substr(1);
-							post['scalar:child_urn'] = child_urn;
-						}
+						if ('undefined' == typeof(child_url)) child_url = old_child_url;
+						var child_urn = child_url.replace(opts.dest_url, '');
+						if ('/'==child_urn.substr(0,1)) child_urn = child_urn.substr(1);
+						post['scalar:child_urn'] = child_urn;
 						relate_total++;
 						$.post(url, post, function(relation_data){}).always(function(data) {
 							relate_count++;
