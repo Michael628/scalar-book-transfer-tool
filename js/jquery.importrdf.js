@@ -20,7 +20,7 @@
 /**
  * @projectDescription  Forked from Scalar's rdfimporter library, elaborates on combined page/version node import for Tensor; should some day be merged
  * @author				Craig Dietrich
- * @version				1.1
+ * @version				1.2
  */
 
 (function($) {
@@ -77,28 +77,12 @@
 					// Queue incoming RDF-JSON pages and relationships
 			        $.fn.rdfimporter('queue', options, function() {	  
 			        	// Once queued, save pages (which includes media-pages)
-			        	$content_progress = $this.find('#content_progress'); 
-			        	$content_progress_text = $content_progress.find('span');
-			        	//console.log(opts);
-			        	//return;
-			        	$.fn.rdfimporter('pages', function(pagination, error_msg) {
-			        		var progress = ((pagination.count/pagination.total)*100)+'%';
-			        		$content_progress.css('width', progress);
-			        		$content_progress_text.text('Content '+pagination.count + ' of '+pagination.total);
-			        		if (pagination.error) $.fn.rdfimporter('error', {el:$content_progress,msg:error_msg});
+			        	$.fn.rdfimporter('pages', function() {
 			        		// Once pages are saved, save relationships
-			        		if (pagination.count==pagination.total) {
-					        	$relations_progress = $this.find('#relations_progress'); 
-					        	$relations_progress_text = $relations_progress.find('span');
-					        	$.fn.rdfimporter('relations', function(pagination, error_msg) {
-					        		var progress = ((pagination.count/pagination.total)*100)+'%';
-					        		$relations_progress.css('width', progress);
-					        		$relations_progress_text.text('Relation '+pagination.count + ' of '+pagination.total);
-					        		if (pagination.error) $.fn.rdfimporter('error', {el:$relations_progress,msg:error_msg});
-					        		// Once complete, finish
-					        		if (pagination.count==pagination.total) callback();
-					        	});				        			
-			        		};
+					        $.fn.rdfimporter('relations', function() {
+					        	// Once complete, finish
+					        	callback();
+					        });				        			
 			        	});			
 			        });
 				};
@@ -406,54 +390,90 @@
 			console.log(opts);
 			callback();
 		},
-		pages : function(options, callback) {
-			if ('function'==typeof(options)) callback = options;
-			var page_count = 0;
+		pages : function(options, callback, page_count) {
+			if ('function'==typeof(options)) {
+				page_count = callback;
+				callback = options;
+			}
+			if ('undefined' == typeof(page_count)) var page_count = 0;
 			var page_total = 0;
-			$.each(opts.queue,function(key,value) {
-				console.log(value);
+			var count = 0;
+			for (var _uri in opts.queue) {
 				page_total++;
-				var url = opts.dest_url+'/api/'+value.action.toLowerCase();
-				$.post(url, value, function(page_data) {
-					if ('object'!=typeof(page_data)) return;
-					$.each(page_data, function(k,v) {
-						if ('/'==k.substr(k.length-1, 1)) k = k.substr(0, k.length-1);
-						if ('UPDATE'==value.action) {
-							opts.url_map[value['scalar:urn']] = v['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value;
-						} else {
-							opts.url_map[key] = k.match(/^(.*)\.[0-9]*$/)[1];
-						}
-					});
-				}).always(function(err) {
-					page_count++;
-					var msg = '';
-					if ('object'!=typeof(err)) {
-						var msg = 'URL isn\'t a Scalar Save API URL ['+url+'] for "'+value['dcterms:title']+'"';
-					} else if ('error'==err.statusText) {
-						var msg = 'There was an error resolving the Save API URL ['+url+'] for "'+value['dcterms:title']+'"';
-					} else if ('Unauthorized'==err.statusText) {
-						var msg = 'Could not save: you are logged out of the destination Scalar book or do not have permissions to edit';
+				if (count == page_count) {
+					var value = opts.queue[_uri];
+					var key = _uri;
+				}
+				count++;
+			}
+			if (page_count == page_total) {
+				callback();
+				return;
+			}
+			console.log('page_count: ' + page_count);
+			console.log('page_total: ' + page_total);
+			console.log(value);
+			var url = opts.dest_url+'/api/'+value.action.toLowerCase();
+			$.post(url, value, function(page_data) {
+				if ('object'!=typeof(page_data)) return;
+				$.each(page_data, function(k,v) {
+					if ('/'==k.substr(k.length-1, 1)) k = k.substr(0, k.length-1);
+					if ('UPDATE'==value.action) {
+						opts.url_map[value['scalar:urn']] = v['http://scalar.usc.edu/2012/01/scalar-ns#urn'][0].value;
+					} else {
+						opts.url_map[key] = k.match(/^(.*)\.[0-9]*$/)[1];
 					}
-					callback({dest_url:opts.dest_url,url:url,count:page_count,total:page_total,error:((msg.length)?true:false)}, msg);
 				});
-				opts.queue = {};
+				$content_progress = $('#content_progress'); 
+				$content_progress_text = $content_progress.find('span');
+				var progress = (((page_count+1)/page_total)*100)+'%';
+				$content_progress.css('width', progress);
+				$content_progress_text.text('Content '+(page_count+1) + ' of '+page_total);
+				if (page_count == page_total) {
+					callback();
+				} else {
+					$.fn.rdfimporter('pages', callback, ++page_count);
+				}
+			}).always(function(err) {
+				page_count++;
+				var msg = '';
+				if ('object'!=typeof(err)) {
+					var msg = 'URL isn\'t a Scalar Save API URL ['+url+'] for "'+value['dcterms:title']+'"';
+				} else if ('error'==err.statusText) {
+					var msg = 'There was an error resolving the Save API URL ['+url+'] for "'+value['dcterms:title']+'"';
+				} else if ('Unauthorized'==err.statusText) {
+					var msg = 'Could not save: you are logged out of the destination Scalar book or do not have permissions to edit';
+				}
 			});
 		},
-		relations : function(callback) {
-			var relate_count = 0;
+		relations : function(callback, relate_count) {
 			var relate_total = 0;
+			if ('undefined' == typeof(relate_count)) relate_count = 0;
 			var url = opts.dest_url+'/api/relate';
-			if ($.isEmptyObject(opts.relations)) {
-				callback({url:url,count:0,total:0,error:false}, '');	
+			for (var _old_parent_url in opts.relations) {
+				for (var rel_type in opts.relations[_old_parent_url]) {
+					for (var j in opts.relations[_old_parent_url][rel_type]) {
+						if ('object' != typeof(opts.relations[_old_parent_url][rel_type][j])) continue;
+						relate_total++;
+					}
+				}
 			}
+			var count = 0;
 			for (var old_parent_url in opts.relations) {
 				var parent_url = opts.url_map[old_parent_url];
 				var urn = parent_url.replace(opts.dest_url,'');
 				if ('/'==urn.substr(0,1)) urn = urn.substr(1);
-				console.log(old_parent_url + ' ' + parent_url + ' '+urn);
 				for (var rel_type in opts.relations[old_parent_url]) {
 					for (var j in opts.relations[old_parent_url][rel_type]) {
 						if ('object' != typeof(opts.relations[old_parent_url][rel_type][j])) continue;
+						if (count != relate_count) {
+							count++;
+							continue;
+						}
+						count++;
+						console.log('relate_count: ' + relate_count);
+						console.log('relate_total: ' + relate_total);
+						console.log(old_parent_url + ' ' + parent_url + ' '+urn);
 						var post = {};
 						post['action'] = 'RELATE';
 						post['native'] = 'true';
@@ -473,15 +493,23 @@
 						var child_urn = child_url.replace(opts.dest_url, '');
 						if ('/'==child_urn.substr(0,1)) child_urn = child_urn.substr(1);
 						post['scalar:child_urn'] = child_urn;
-						relate_total++;
 						$.post(url, post, function(relation_data){}).always(function(data) {
-							relate_count++;
 							var msg = '';
 							if ('undefined'!=typeof(data.responseJSON)) {
 								var msg = 'There was an error saving relationship for '+parent_urn+' > '+child_urn+': '+data.responseJSON.error.message[0].value;
 							}
-							callback({url:url,count:relate_count,total:relate_total,error:((msg.length)?true:false)}, msg);							
+							$relations_progress = $('#relations_progress'); 
+							$relations_progress_text = $relations_progress.find('span');
+							var progress = (((relate_count+1)/relate_total)*100)+'%';
+							$relations_progress.css('width', progress);
+							$relations_progress_text.text('Relation '+(relate_count+1)+ ' of '+relate_total);
+							if ((relate_count+1) == relate_total) {
+								callback();
+							} else {
+								$.fn.rdfimporter('relations', callback, ++relate_count);
+							}
 						});
+						return;
 					}
 				}
 			}
